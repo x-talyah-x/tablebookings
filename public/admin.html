@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basils Lounge - Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        felt: { 400: '#34d399', 500: '#10b981', 600: '#059669', 800: '#065f46', 950: '#022c22' }
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Outfit', sans-serif; background-color: #0b0f17; color: #f3f4f6; }
+        @keyframes toastIn {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-toast { animation: toastIn 0.25s ease-out forwards; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between relative">
+
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <header class="border-b border-gray-800 bg-gray-950/80 backdrop-blur-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center font-bold text-black">A</div>
+                <h1 class="text-xl font-extrabold tracking-tight text-white">BASILS <span class="text-amber-500 text-sm">Admin</span></h1>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full space-y-8">
+        
+        <!-- Controls & Date Selection -->
+        <div class="bg-gray-900/80 rounded-2xl p-4 border border-gray-800 flex flex-wrap gap-4 items-center justify-between">
+            <div class="flex gap-4 items-center">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Target Date</label>
+                    <input type="date" id="selected-date" class="bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
+                </div>
+            </div>
+            <!-- Legend -->
+            <div class="flex items-center gap-4 text-xs">
+                <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500/80 border border-rose-400"></span><span class="text-gray-400">League / Reserved</span></div>
+                <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-500/80 border border-blue-400"></span><span class="text-gray-400">Walk-In</span></div>
+                <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-gray-600 border border-gray-400"></span><span class="text-gray-400">Maintenance</span></div>
+            </div>
+        </div>
+
+        <!-- ADMIN VIEW PANEL -->
+        <section id="admin-view" class="space-y-6">
+            
+            <!-- ADMIN TABS NAVIGATION -->
+            <div class="flex border-b border-gray-800 space-x-4 overflow-x-auto">
+                <button id="tab-btn-matrix" onclick="switchAdminTab('matrix')" class="py-3 px-4 text-sm font-bold border-b-2 border-amber-500 text-amber-400 transition-all whitespace-nowrap">Timeline Calendar View</button>
+                <button id="tab-btn-day-bookings" onclick="switchAdminTab('day-bookings')" class="py-3 px-4 text-sm font-bold border-b-2 border-transparent text-gray-400 hover:text-white transition-all whitespace-nowrap">Day Bookings</button>
+                <button id="tab-btn-actions" onclick="switchAdminTab('actions')" class="py-3 px-4 text-sm font-bold border-b-2 border-transparent text-gray-400 hover:text-white transition-all whitespace-nowrap">Capture Tables</button>
+                <button id="tab-btn-month" onclick="switchAdminTab('month')" class="py-3 px-4 text-sm font-bold border-b-2 border-transparent text-gray-400 hover:text-white transition-all whitespace-nowrap">Monthly Overview</button>
+            </div>
+
+            <!-- TAB 1: Timeline / Calendar View -->
+            <div id="admin-tab-matrix" class="space-y-6">
+                <!-- Visual Daily Matrix -->
+                <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 relative min-h-[300px]">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-white">Daily Visual Schedule</h3>
+                        <span id="matrix-date-label" class="text-xs font-semibold text-felt-400"></span>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <div class="inline-block min-w-[1000px] w-full">
+                            <div id="timeline-header" class="flex border-b border-gray-800 pb-2 mb-2 text-xs font-semibold text-gray-400"></div>
+                            <div id="timeline-rows" class="space-y-2 relative min-h-[200px]"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: Day Bookings (All Active & Inactive) -->
+            <div id="admin-tab-day-bookings" class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-white">Day Bookings</h3>
+                  </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-gray-300">
+                        <thead class="bg-gray-950 text-xs font-semibold text-gray-400 uppercase border-b border-gray-800">
+                            <tr>
+                                <th class="p-3">Ref ID</th>
+                                <th class="p-3">User / Type</th>
+                                <th class="p-3">Time Slot</th>
+                                <th class="p-3">Table</th>
+                                <th class="p-3">Payment Method</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3">Total Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-bookings-list" class="divide-y divide-gray-800/60"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 3: Action Items -->
+            <div id="admin-tab-actions" class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hidden">
+                <h3 class="text-lg font-bold text-amber-400 mb-4">Admin Action Management</h3>
+                <form id="action-items-form" class="space-y-4 max-w-2xl relative">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Action Type</label>
+                        <select id="action-type" onchange="toggleActionFields()" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
+                            <option value="WALK_IN">Walk In</option>
+                            <option value="RESERVED">Bulk Book for League</option>
+                            <option value="MAINTENANCE">Maintenance</option>
+                            <option value="CLEAR_TABLE">Clear Tables</option>
+                        </select>
+                    </div>
+
+                    <!-- Time & Duration Fields -->
+                    <div id="time-range-fields" class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Start Time</label>
+                            <input type="time" id="action-start-time" value="11:00" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Duration (Hours)</label>
+                            <input type="number" id="action-duration" min="1" max="12" value="1" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Select Tables</label>
+                        <div id="action-tables-container" class="grid grid-cols-3 md:grid-cols-6 gap-2 bg-gray-950 border border-gray-700 rounded-xl p-3 relative min-h-[60px]"></div>
+                    </div>
+
+                    <button type="submit" id="btn-submit-action" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-all flex items-center justify-center gap-2">
+                        <span>Apply Action Item</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- TAB 4: Monthly Overview -->
+            <div id="admin-tab-month" class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-bold text-white">Monthly Booking & Payment Summary</h3>
+                    <div class="flex items-center gap-2">
+                        <input type="month" id="selected-month" onchange="loadMonthData()" class="bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
+                        <button onclick="downloadMonthlyCSV()" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs rounded-xl flex items-center gap-2 transition-all">
+                            <i data-lucide="download" class="w-4 h-4"></i> Download CSV
+                        </button>
+                    </div>
+                </div>
+                   
+                <!-- Monthly Totals Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-gray-950 border border-gray-800 rounded-xl p-4">
+                        <span class="text-xs font-semibold text-gray-400 uppercase">Total Revenue</span>
+                        <p id="month-total-rev" class="text-2xl font-extrabold text-felt-400 mt-1">R0.00</p>
+                    </div>
+                    <div class="bg-gray-950 border border-gray-800 rounded-xl p-4">
+                        <span class="text-xs font-semibold text-gray-400 uppercase">Cash Collected</span>
+                        <p id="month-total-cash" class="text-2xl font-extrabold text-amber-400 mt-1">R0.00</p>
+                    </div>
+                    <div class="bg-gray-950 border border-gray-800 rounded-xl p-4">
+                        <span class="text-xs font-semibold text-gray-400 uppercase">Card Payments</span>
+                        <p id="month-total-card" class="text-2xl font-extrabold text-blue-400 mt-1">R0.00</p>
+                    </div>
+                </div>
+
+                <!-- Calendar View Container -->
+                <div id="month-calendar-grid" class="grid grid-cols-7 gap-2 text-center text-xs min-h-[300px] relative"></div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- WALK-IN PAYMENT METHOD MODAL -->
+    <div id="payment-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-md w-full space-y-6">
+            <h3 class="text-xl font-bold text-white">Confirm Walk-In Payment</h3>
+            
+            <div class="bg-gray-950 rounded-xl p-4 border border-gray-800 space-y-2">
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-400">Calculated Total:</span>
+                    <span id="modal-calculated-price" class="font-bold text-felt-400 text-base">R0.00</span>
+                </div>
+                <p class="text-xs text-gray-500">*Price dynamically calculated based on individual table rates and duration.</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase mb-2">Select Payment Method</label>
+                <div class="grid grid-cols-2 gap-4">
+                    <button type="button" id="btn-pay-cash" onclick="confirmWalkInWithPayment('CASH')" class="py-4 bg-gray-950 hover:bg-amber-500/10 border border-amber-500/40 rounded-xl text-amber-400 font-bold flex flex-col items-center justify-center gap-1 transition-all">
+                        <i data-lucide="banknote" class="w-6 h-6"></i>
+                        <span>CASH</span>
+                    </button>
+                    <button type="button" id="btn-pay-card" onclick="confirmWalkInWithPayment('CARD')" class="py-4 bg-gray-950 hover:bg-blue-500/10 border border-blue-500/40 rounded-xl text-blue-400 font-bold flex flex-col items-center justify-center gap-1 transition-all">
+                        <i data-lucide="credit-card" class="w-6 h-6"></i>
+                        <span>CARD</span>
+                    </button>
+                </div>
+            </div>
+
+            <button type="button" onclick="closePaymentModal()" class="w-full py-2 text-xs text-gray-400 hover:text-white transition-all">Cancel</button>
+        </div>
+    </div>
+
+    <!-- ALERT / MESSAGE MODAL -->
+    <div id="alert-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-sm w-full text-center space-y-4">
+            <div id="alert-modal-icon" class="w-12 h-12 rounded-full mx-auto flex items-center justify-center"></div>
+            <h3 id="alert-modal-title" class="text-lg font-bold text-white">Notice</h3>
+            <p id="alert-modal-msg" class="text-sm text-gray-400"></p>
+            <button onclick="closeAlertModal()" class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-all text-sm">OK</button>
+        </div>
+    </div>
+
+    <script>
+        let appState = {
+            tables: [],
+            allDateBookings: [],
+            selectedDate: new Date().toISOString().split('T')[0],
+            pendingWalkInData: null
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const now = new Date();
+            const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            
+            document.getElementById('selected-date').value = appState.selectedDate;
+            document.getElementById('selected-month').value = monthStr;            
+            document.getElementById('selected-date').addEventListener('change', onDateChange);
+            document.getElementById('action-items-form').addEventListener('submit', handleActionFormSubmit);
+
+            loadAdminData();
+            lucide.createIcons();
+        });
+
+        // Toast Notification System
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bgColors = "bg-gray-900 border-gray-700 text-gray-200";
+            let iconName = "info";
+            
+            if (type === 'success') {
+                bgColors = "bg-emerald-950/90 border-emerald-500/50 text-emerald-200";
+                iconName = "check-circle";
+            } else if (type === 'error') {
+                bgColors = "bg-rose-950/90 border-rose-500/50 text-rose-200";
+                iconName = "alert-triangle";
+            } else if (type === 'warning') {
+                bgColors = "bg-amber-950/90 border-amber-500/50 text-amber-200";
+                iconName = "alert-circle";
+            }
+
+            toast.className = `flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-md shadow-xl text-sm font-semibold pointer-events-auto animate-toast ${bgColors}`;
+            toast.innerHTML = `<i data-lucide="${iconName}" class="w-5 h-5 flex-shrink-0"></i><span>${message}</span>`;
+            
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // Custom Pop-Up Alert Modal
+        function showAlertModal(message, title = 'Notice', type = 'warning') {
+            const modal = document.getElementById('alert-modal');
+            const titleEl = document.getElementById('alert-modal-title');
+            const msgEl = document.getElementById('alert-modal-msg');
+            const iconEl = document.getElementById('alert-modal-icon');
+
+            titleEl.innerText = title;
+            msgEl.innerText = message;
+
+            if (type === 'error') {
+                iconEl.className = "w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-rose-500/20 text-rose-400";
+                iconEl.innerHTML = `<i data-lucide="x-circle" class="w-6 h-6"></i>`;
+            } else {
+                iconEl.className = "w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-amber-500/20 text-amber-400";
+                iconEl.innerHTML = `<i data-lucide="alert-triangle" class="w-6 h-6"></i>`;
+            }
+
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeAlertModal() {
+            document.getElementById('alert-modal').classList.add('hidden');
+        }
+
+        function switchAdminTab(tab) {
+            ['matrix', 'day-bookings', 'actions', 'month'].forEach(t => {
+                const el = document.getElementById(`admin-tab-${t}`);
+                const btn = document.getElementById(`tab-btn-${t}`);
+                if (t === tab) {
+                    el.classList.remove('hidden');
+                    btn.className = "py-3 px-4 text-sm font-bold border-b-2 border-amber-500 text-amber-400 transition-all whitespace-nowrap";
+                } else {
+                    el.classList.add('hidden');
+                    btn.className = "py-3 px-4 text-sm font-bold border-b-2 border-transparent text-gray-400 hover:text-white transition-all whitespace-nowrap";
+                }
+            });
+
+            if (tab === 'month') loadMonthData();
+        }
+
+        function getLoaderHTML(text = "Loading...") {
+            return `
+                <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-xs flex items-center justify-center gap-3 z-30 rounded-2xl">
+                    <i data-lucide="loader-2" class="w-6 h-6 text-amber-400 animate-spin"></i>
+                    <span class="text-xs font-semibold text-gray-300">${text}</span>
+                </div>
+            `;
+        }
+
+        async function loadAdminData() {
+            const rowsContainer = document.getElementById('timeline-rows');
+            const bookingsContainer = document.getElementById('admin-bookings-list');
+            const tablesContainer = document.getElementById('action-tables-container');
+
+            rowsContainer.innerHTML = getLoaderHTML("Loading schedule timeline...");
+            bookingsContainer.innerHTML = `<tr><td colspan="7" class="p-8 text-center relative">${getLoaderHTML("Loading bookings...")}</td></tr>`;
+            tablesContainer.innerHTML = getLoaderHTML("Fetching tables...");
+            lucide.createIcons();
+
+            try {
+                const tablesRes = await fetch('/api/tables');
+                const tablesData = await tablesRes.json();
+                appState.tables = Array.isArray(tablesData) ? tablesData : [];
+
+                const dayBookingsRes = await fetch(`/api/admin/day-bookings?date=${appState.selectedDate}`);
+                const dayBookings = await dayBookingsRes.json();
+                
+                // Retains all bookings (both active & inactive)
+                appState.allDateBookings = Array.isArray(dayBookings) ? dayBookings : [];
+                
+                populateActionFormControls();
+                renderTimeline();
+                renderAdminBookings(appState.allDateBookings);
+            } catch (err) {
+                console.error('Error loading admin data:', err);
+                showToast('Failed to load dashboard data. Please try again.', 'error');
+            }
+        }
+
+        function toggleActionFields() {
+            const type = document.getElementById('action-type').value;
+            const timeFields = document.getElementById('time-range-fields');
+
+            if (type === 'CLEAR_TABLE') {
+                timeFields.classList.remove('hidden');
+            } else {
+                timeFields.classList.remove('hidden');
+            }
+        }
+
+        function calculateWalkInPrice(selectedTableIds, durationHours) {
+            let total = 0;
+            selectedTableIds.forEach(id => {
+                const table = appState.tables.find(t => String(t.id) === String(id));
+                const hourlyRate = (table && table.price) ? Number(table.price) : 60;
+                total += hourlyRate * Number(durationHours);
+            });
+            return total;
+        }
+
+        async function handleActionFormSubmit(e) {
+            e.preventDefault();
+            const actionType = document.getElementById('action-type').value;
+            const startTime = document.getElementById('action-start-time').value;
+            const duration = document.getElementById('action-duration').value;
+            
+            const selectedTables = Array.from(document.querySelectorAll('input[name="action-tables"]:checked')).map(el => el.value);
+
+            if (selectedTables.length === 0) {
+                showAlertModal('Please select at least one table to perform this action.', 'Selection Required', 'warning');
+                return;
+            }
+
+            const endTime = calculateEndTime(startTime, duration);
+            const generatedSlot = `${formatTime12H(startTime)} - ${formatTime12H(endTime)}`;
+
+            if (actionType === 'WALK_IN') {
+                const calculatedPrice = calculateWalkInPrice(selectedTables, duration);
+                appState.pendingWalkInData = {
+                    actionType,
+                    price: calculatedPrice,
+                    tables: selectedTables,
+                    slots: [generatedSlot],
+                    date: appState.selectedDate,
+                    durationHours: duration
+                };
+                document.getElementById('modal-calculated-price').innerText = `R${calculatedPrice.toFixed(2)}`;
+                document.getElementById('payment-modal').classList.remove('hidden');
+                return;
+            }
+
+            await executeActionAPI({
+                actionType,
+                tables: selectedTables,
+                slots: [generatedSlot],
+                date: appState.selectedDate,
+                durationHours: duration
+            });
+        }
+
+        async function confirmWalkInWithPayment(paymentMethod) {
+            if (!appState.pendingWalkInData) return;
+            
+            const payCashBtn = document.getElementById('btn-pay-cash');
+            const payCardBtn = document.getElementById('btn-pay-card');
+            payCashBtn.disabled = true;
+            payCardBtn.disabled = true;
+
+            const payload = {
+                ...appState.pendingWalkInData,
+                paymentMethod
+            };
+            
+            closePaymentModal();
+            await executeActionAPI(payload);
+
+            payCashBtn.disabled = false;
+            payCardBtn.disabled = false;
+        }
+
+        function closePaymentModal() {
+            document.getElementById('payment-modal').classList.add('hidden');
+            appState.pendingWalkInData = null;
+        }
+
+        async function executeActionAPI(payload) {
+            const submitBtn = document.getElementById('btn-submit-action');
+            const originalBtnHTML = submitBtn.innerHTML;
+            
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Processing...`;
+            lucide.createIcons();
+
+            try {
+                const res = await fetch('/api/admin/action-item', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    showToast('Action item successfully applied!', 'success');
+                    document.getElementById('action-items-form').reset();
+                    await loadAdminData();
+                    switchAdminTab('matrix');
+                } else {
+                    const data = await res.json();
+                    showAlertModal(data.error || 'Could not apply action item.', 'Action Failed', 'error');
+                }
+            } catch (err) {
+                console.error('Action submission error:', err);
+                showToast('Network error while processing action item.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnHTML;
+            }
+        }
+
+        function downloadMonthlyCSV() {
+            const month = document.getElementById('selected-month').value;
+            if (!month) {
+                showAlertModal('Please select a valid month to download.', 'Selection Required');
+                return;
+            }
+            showToast('Preparing CSV download...', 'info');
+            window.location.href = `/api/admin/export-month-csv?month=${month}`;
+        }
+
+        async function loadMonthData() {
+            const selectedMonth = document.getElementById('selected-month').value;
+            if (!selectedMonth) return;
+
+            const grid = document.getElementById('month-calendar-grid');
+            grid.innerHTML = getLoaderHTML("Loading monthly summary...");
+            lucide.createIcons();
+
+            try {
+                const res = await fetch(`/api/admin/month-summary?month=${selectedMonth}`);
+                const monthData = await res.json();
+
+                document.getElementById('month-total-rev').innerText = `R${Number(monthData.totalRevenue || 0).toFixed(2)}`;
+                document.getElementById('month-total-cash').innerText = `R${Number(monthData.totalCash || 0).toFixed(2)}`;
+                document.getElementById('month-total-card').innerText = `R${Number(monthData.totalCard || 0).toFixed(2)}`;
+
+                renderMonthGrid(selectedMonth, monthData.days || {});
+            } catch (err) {
+                console.error('Error loading month overview:', err);
+                showToast('Failed to load monthly overview data.', 'error');
+            }
+        }
+
+        function renderMonthGrid(yearMonth, dailyData) {
+            const grid = document.getElementById('month-calendar-grid');
+            grid.innerHTML = '';
+
+            const [year, month] = yearMonth.split('-').map(Number);
+            const daysInMonth = new Date(year, month, 0).getDate();
+            const firstDayIndex = new Date(year, month - 1, 1).getDay();
+
+            const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            weekdays.forEach(day => {
+                grid.innerHTML += `<div class="font-bold text-gray-500 py-2">${day}</div>`;
+            });
+
+            for (let i = 0; i < firstDayIndex; i++) {
+                grid.innerHTML += `<div class="bg-gray-950/20 rounded-xl h-24 border border-gray-900/50"></div>`;
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateKey = `${yearMonth}-${String(day).padStart(2, '0')}`;
+                const data = dailyData[dateKey] || { total: 0, cash: 0, card: 0, count: 0 };
+
+                grid.innerHTML += `
+                    <div class="bg-gray-950 border border-gray-800 rounded-xl p-2 h-24 flex flex-col justify-between text-left hover:border-gray-700 transition-all">
+                        <span class="font-bold text-white text-xs">${day}</span>
+                        <div>
+                            <p class="text-[10px] font-bold text-felt-400">R${Number(data.total).toFixed(2)}</p>
+                            <div class="text-[9px] text-gray-400 mt-0.5 space-y-0.5">
+                                <p class="text-amber-400">💵 R${Number(data.cash).toFixed(2)}</p>
+                                <p class="text-blue-400">💳 R${Number(data.card).toFixed(2)}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function parseTimeToMinutes(timeStr) {
+            if (!timeStr) return 0;
+            const cleanStr = timeStr.trim();
+            if (cleanStr.includes('AM') || cleanStr.includes('PM')) {
+                const parts = cleanStr.split(' ');
+                const [h, m] = parts[0].split(':').map(Number);
+                let hours = h % 12;
+                if (parts[1] === 'PM') hours += 12;
+                return hours * 60 + m;
+            }
+            const [h, m] = cleanStr.split(':').map(Number);
+            return h * 60 + m;
+        }
+
+        function getBookingTimeRange(booking) {
+            if (booking.start_time && booking.duration_hours) {
+                const start = parseTimeToMinutes(booking.start_time);
+                return { startMin: start, durationMin: parseInt(booking.duration_hours) * 60 };
+            }
+            const slot = booking.time_slot || booking.slot;
+            if (slot && slot.includes('-')) {
+                const [startStr, endStr] = slot.split('-').map(s => s.trim());
+                const startMin = parseTimeToMinutes(startStr);
+                let endMin = parseTimeToMinutes(endStr);
+                if (endMin <= startMin) endMin += 1440;
+                return { startMin, durationMin: endMin - startMin };
+            }
+            return { startMin: 660, durationMin: 60 };
+        }
+
+        function renderTimeline() {
+            document.getElementById('matrix-date-label').innerText = `Date: ${appState.selectedDate}`;
+            const headerContainer = document.getElementById('timeline-header');
+            const rowsContainer = document.getElementById('timeline-rows');
+
+            headerContainer.innerHTML = '';
+            rowsContainer.innerHTML = '';
+
+            const startHour = 11;
+            const totalHours = 12;
+            const dayStartMin = startHour * 60;
+            const dayTotalMin = totalHours * 60;
+
+            const tableHeaderSpacer = document.createElement('div');
+            tableHeaderSpacer.className = 'w-32 flex-shrink-0 font-bold text-xs text-gray-400 flex items-center justify-center border-r border-gray-800 bg-gray-950 p-2 sticky left-0 z-20';
+            tableHeaderSpacer.innerText = 'Table';
+            headerContainer.appendChild(tableHeaderSpacer);
+
+            const timelineHeaderTrack = document.createElement('div');
+            timelineHeaderTrack.className = 'flex-1 flex relative h-8';
+
+            for (let h = 0; h < totalHours; h++) {
+                const hour = (startHour + h) % 24;
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                const displayH = hour % 12 || 12;
+
+                const colHeader = document.createElement('div');
+                colHeader.className = 'flex-1 font-bold text-xs text-gray-400 text-center flex items-center justify-center border-r border-gray-800/40 bg-gray-950';
+                colHeader.innerText = `${displayH}:00 ${ampm}`;
+                timelineHeaderTrack.appendChild(colHeader);
+            }
+            headerContainer.appendChild(timelineHeaderTrack);
+
+            if (appState.tables.length === 0) {
+                rowsContainer.innerHTML = `<div class="p-8 text-center text-gray-500 text-sm">No pool tables available.</div>`;
+                return;
+            }
+
+            appState.tables.forEach(table => {
+                const row = document.createElement('div');
+                row.className = 'flex items-stretch h-14 border border-gray-800/60 rounded-xl overflow-hidden bg-gray-950/40 relative';
+
+                const tableLabel = document.createElement('div');
+                tableLabel.className = 'w-32 flex-shrink-0 font-bold text-sm text-white border-r border-gray-800 flex items-center justify-center bg-gray-950 sticky left-0 z-10 px-2 truncate';
+                tableLabel.innerText = table.name || `Table ${table.id}`;
+                row.appendChild(tableLabel);
+
+                const track = document.createElement('div');
+                track.className = 'flex-1 relative bg-gray-950/20';
+
+                for (let h = 1; h < totalHours; h++) {
+                    const gridLine = document.createElement('div');
+                    gridLine.className = 'absolute top-0 bottom-0 border-r border-gray-800/30 pointer-events-none';
+                    gridLine.style.left = `${(h / totalHours) * 100}%`;
+                    track.appendChild(gridLine);
+                }
+
+                // Render active reservations exclusively on visual timeline grid
+                const tableBookings = appState.allDateBookings.filter(b => b.table_id === table.id && b.is_active !== false);
+
+                tableBookings.forEach(b => {
+                    const { startMin, durationMin } = getBookingTimeRange(b);
+                    const offsetMin = Math.max(0, startMin - dayStartMin);
+                    const leftPercent = (offsetMin / dayTotalMin) * 100;
+                    const widthPercent = (durationMin / dayTotalMin) * 100;
+
+                    if (leftPercent < 100 && (leftPercent + widthPercent) > 0) {
+                        let bgClass = "bg-rose-500/20 border-rose-500 text-rose-300";
+                        if (b.status === 'WALK_IN') bgClass = "bg-blue-500/20 border-blue-500 text-blue-300";
+                        if (b.status === 'MAINTENANCE') bgClass = "bg-gray-700/40 border-gray-500 text-gray-300";
+
+                        const block = document.createElement('div');
+                        block.className = `absolute top-1 bottom-1 rounded-lg border px-2 py-1 flex flex-col justify-center text-[10px] leading-tight shadow-md overflow-hidden transition-all hover:scale-[1.01] hover:z-20 cursor-pointer ${bgClass}`;
+                        block.style.left = `${Math.max(0, leftPercent)}%`;
+                        block.style.width = `${Math.min(100 - leftPercent, widthPercent)}%`;
+
+                        const slotLabel = b.time_slot || b.slot || '';
+                        block.title = `${b.user_name || 'Booking'} (${slotLabel})`;
+
+                        block.innerHTML = `
+                            <span class="font-bold truncate">${b.user_name || 'Booking'}</span>
+                            <span class="text-[9px] opacity-80 truncate">${slotLabel}</span>
+                        `;
+                        track.appendChild(block);
+                    }
+                });
+
+                row.appendChild(track);
+                rowsContainer.appendChild(row);
+            });
+        }
+
+        function renderAdminBookings(bookings) {
+            const container = document.getElementById('admin-bookings-list');
+            container.innerHTML = '';
+
+            if (!bookings || bookings.length === 0) {
+                container.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-500">No bookings found for this date.</td></tr>`;
+                return;
+            }
+
+            bookings.forEach(b => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-950/50 transition-colors";
+
+                let methodBadge = `<span class="px-2 py-0.5 text-[10px] bg-gray-800 text-gray-400 rounded-md font-bold">N/A</span>`;
+                if (b.payment_method === 'CASH') {
+                    methodBadge = `<span class="px-2 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-md font-bold">CASH</span>`;
+                } else if (b.payment_method === 'CARD') {
+                    methodBadge = `<span class="px-2 py-0.5 text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-md font-bold">CARD</span>`;
+                }
+
+                let statusBadge = `<span class="px-2 py-0.5 text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-md font-bold">Active</span>`;
+                if (b.is_active === false || b.status === 'CANCELLED') {
+                    statusBadge = `<span class="px-2 py-0.5 text-[10px] bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-md font-bold">Inactive</span>`;
+                }
+
+                tr.innerHTML = `
+                    <td class="p-3 font-mono text-xs text-amber-400">${b.ref_id || 'N/A'}</td>
+                    <td class="p-3 font-semibold text-white">${b.user_name || 'N/A'}</td>
+                    <td class="p-3 text-xs text-gray-300">${b.time_slot || b.slot}</td>
+                    <td class="p-3">Table ${b.table_id}</td>
+                    <td class="p-3">${methodBadge}</td>
+                    <td class="p-3">${statusBadge}</td>
+                    <td class="p-3 font-semibold text-felt-400">R${Number(b.total_price || 0).toFixed(2)}</td>
+                `;
+                container.appendChild(tr);
+            });
+        }
+
+        function populateActionFormControls() {
+            const tablesContainer = document.getElementById('action-tables-container');
+            
+            if (appState.tables.length === 0) {
+                tablesContainer.innerHTML = `<span class="text-xs text-gray-500 col-span-full">No tables found.</span>`;
+                return;
+            }
+
+            tablesContainer.innerHTML = appState.tables.map(t => `
+                <label class="flex items-center space-x-2 text-xs text-gray-300 cursor-pointer hover:text-white transition-colors">
+                    <input type="checkbox" name="action-tables" value="${t.id}" class="rounded bg-gray-900 border-gray-700 text-amber-500 focus:ring-amber-500">
+                    <span>T${t.id} (R${t.price})</span>
+                </label>
+            `).join('');
+        }
+
+        function calculateEndTime(startTimeStr, hoursToAdd) {
+            if (!startTimeStr) return "";
+            const [hours, minutes] = startTimeStr.split(':').map(Number);
+            const endHours = (hours + parseInt(hoursToAdd)) % 24;
+            return `${String(endHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        }
+
+        function formatTime12H(time24) {
+            if (!time24) return "";
+            let [hours, minutes] = time24.split(':').map(Number);
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${ampm}`;
+        }
+
+        function onDateChange() {
+            appState.selectedDate = document.getElementById('selected-date').value;
+            loadAdminData();
+        }
+    </script>
+</body>
+</html>

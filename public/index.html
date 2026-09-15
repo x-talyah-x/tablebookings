@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CueCraft Lounge - Pool Table Reservation System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        felt: { 500: '#10b981', 600: '#059669', 800: '#065f46', 950: '#022c22' }
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Outfit', sans-serif; background-color: #0b0f17; color: #f3f4f6; }
+        .billiard-table-cloth { background: radial-gradient(circle, #059669 0%, #047857 70%, #064e3b 100%); }
+        .billiard-wood-frame { background: linear-gradient(145deg, #5c2d12, #2a1205); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <header class="border-b border-gray-800 bg-gray-950/80 backdrop-blur-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-felt-600 flex items-center justify-center font-bold text-white">8</div>
+                <h1 class="text-xl font-extrabold tracking-tight text-white">CUECRAFT <span class="text-felt-500 text-sm">Lounge</span></h1>
+                
+            </div>
+            <h2>Bookings available from 11am to 10pm only</h2>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full space-y-8">
+        <!-- Controls & Time Selection -->
+        <div class="bg-gray-900/80 rounded-2xl p-4 border border-gray-800 flex flex-wrap gap-4 items-center justify-between">
+            <div class="flex flex-wrap gap-4 items-center">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Booking Date</label>
+                    <input type="date" id="selected-date" class="bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
+                </div>
+               <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Start Time</label>
+                <input type="time" id="start-time" class="bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
+            </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Duration</label>
+                    <select id="duration-hours" class="bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
+                        <option value="1">1 Hour</option>
+                        <option value="2">2 Hours</option>
+                        <option value="3">3 Hours</option>
+                        <option value="4">4 Hours</option>
+                        <option value="5">5 Hours</option>
+                    </select>
+                </div>
+            </div>
+            <div class="text-xs text-gray-400 bg-gray-950 px-3 py-2 rounded-xl border border-gray-800">
+                Selected Slot: <span id="slot-preview" class="text-felt-400 font-semibold">--</span>
+            </div>
+        </div>
+
+        <!-- Floor Plan Grid -->
+        <section id="user-view">
+            <div id="pool-table-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"></div>
+        </section>
+    </main>
+
+    <!-- Modal: New Booking -->
+    <div id="booking-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6">
+            <h3 class="text-lg font-bold text-white mb-2">Reserve Table <span id="modal-table-num"></span></h3>
+            <div class="bg-gray-950 border border-gray-800 rounded-xl p-3 mb-4 text-xs space-y-1">
+                <div class="flex justify-between text-gray-400"><span>Time Slot:</span> <span id="modal-time-slot" class="text-white font-medium">--</span></div>
+                <div class="flex justify-between text-gray-400"><span>Duration:</span> <span id="modal-duration" class="text-white font-medium">--</span></div>
+                <div class="flex justify-between text-gray-400"><span>Hourly Rate:</span> <span id="modal-base-price">R0</span></div>
+                <div class="flex justify-between text-gray-400"><span>Subtotal:</span> <span id="modal-subtotal">R0</span></div>
+                <div class="flex justify-between text-gray-400"><span>Booking Fee:</span> <span class="text-amber-400">+R15</span></div>
+                <div class="border-t border-gray-800 pt-1 flex justify-between font-bold text-white"><span>Total Due:</span> <span id="modal-total-price" class="text-felt-400">R0</span></div>
+            </div>
+            <form id="booking-form" class="space-y-4">
+                <input type="hidden" id="form-table-id">
+                <input type="hidden" id="form-total-price">
+                <input type="text" id="form-user-name" required placeholder="Your Name" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
+                <input type="tel" id="form-user-phone" required placeholder="Phone Number" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
+                
+                <p class="text-xs text-amber-400 font-medium italic">* Paystack online payment integration coming soon.</p>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="button" id="cancel-booking-btn" class="w-1/2 py-2 border border-gray-700 rounded-xl text-gray-300 hover:bg-gray-800">Cancel</button>
+                    <button type="submit" class="w-1/2 py-2 bg-felt-600 hover:bg-felt-500 rounded-xl text-white font-bold">Confirm Reservation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let userId = localStorage.getItem('cuecraft_user_id') || 'usr_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('cuecraft_user_id', userId);
+
+        let appState = {
+            tables: [],
+            selectedDate: new Date().toISOString().split('T')[0],
+            startTime: "14:00",
+            durationHours: 1
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('selected-date').value = appState.selectedDate;
+            document.getElementById('start-time').value = appState.startTime;
+            document.getElementById('duration-hours').value = appState.durationHours;
+
+            document.getElementById('selected-date').addEventListener('change', onFilterChange);
+            document.getElementById('start-time').addEventListener('change', onFilterChange);
+            document.getElementById('duration-hours').addEventListener('change', onFilterChange);
+            
+            document.getElementById('cancel-booking-btn').addEventListener('click', closeBookingModal);
+            document.getElementById('booking-form').addEventListener('submit', handleFormSubmit);
+
+            updateSlotPreview();
+            loadData();
+        });
+
+        function calculateEndTime(startTimeStr, hoursToAdd) {
+            if (!startTimeStr) return "";
+            const [hours, minutes] = startTimeStr.split(':').map(Number);
+            const endHours = (hours + parseInt(hoursToAdd)) % 24;
+            return `${String(endHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        }
+
+        function formatTime12H(time24) {
+            if (!time24) return "";
+            let [hours, minutes] = time24.split(':').map(Number);
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${ampm}`;
+        }
+
+        function getFormattedSlot() {
+            const endTime = calculateEndTime(appState.startTime, appState.durationHours);
+            return `${formatTime12H(appState.startTime)} - ${formatTime12H(endTime)}`;
+        }
+
+        function updateSlotPreview() {
+            document.getElementById('slot-preview').innerText = getFormattedSlot();
+        }
+
+        async function loadData() {
+            try {
+                const queryParams = new URLSearchParams({
+                    date: appState.selectedDate,
+                    startTime: appState.startTime,
+                    duration: appState.durationHours
+                });
+
+                const res = await fetch(`/api/tables/available?${queryParams.toString()}`);
+                const data = await res.json();
+                appState.tables = Array.isArray(data) ? data : [];
+                renderFloorPlan();
+            } catch (err) {
+                console.error('Error loading available tables:', err);
+            }
+        }
+
+        function renderFloorPlan() {
+            const grid = document.getElementById('pool-table-grid');
+            grid.innerHTML = '';
+
+            if (appState.tables.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-12 text-gray-500 bg-gray-900/50 rounded-2xl border border-gray-800">
+                        No pool tables available for the selected date and time slot.
+                    </div>
+                `;
+                return;
+            }
+
+            appState.tables.forEach(table => {
+                const price = table.hourly_rate || table.price || 50;
+                const card = document.createElement('div');
+                card.className = "bg-gray-900 rounded-2xl border border-gray-800 p-4 space-y-4";
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h4 class="font-bold text-white">${table.name || 'Table ' + table.id}</h4>
+                            <p class="text-xs text-felt-400 font-semibold">R${price} / hr</p>
+                        </div>
+                        <span class="text-xs px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400">AVAILABLE</span>
+                    </div>
+                    <div class="billiard-wood-frame p-2 rounded-xl text-center">
+                        <div class="billiard-table-cloth h-24 rounded-lg flex flex-col items-center justify-center font-bold text-xs text-white">
+                            <span>Ready to Book</span>
+                        </div>
+                    </div>
+                    <div class="action-container">
+                        <button class="w-full py-2 bg-felt-600 hover:bg-felt-500 text-white font-semibold rounded-xl text-xs reserve-btn">
+                            Reserve Table
+                        </button>
+                    </div>
+                `;
+
+                card.querySelector('.reserve-btn').onclick = () => openBookingModal(table.id, price);
+                grid.appendChild(card);
+            });
+        }
+
+        function openBookingModal(tableId, basePrice) {
+            const duration = parseInt(appState.durationHours);
+            const bookingFee = 15;
+            const subtotal = basePrice * duration;
+            const totalPrice = subtotal + bookingFee;
+            const timeSlotStr = getFormattedSlot();
+
+            document.getElementById('form-table-id').value = tableId;
+            document.getElementById('form-total-price').value = totalPrice;
+            document.getElementById('modal-table-num').innerText = tableId;
+            document.getElementById('modal-time-slot').innerText = timeSlotStr;
+            document.getElementById('modal-duration').innerText = `${duration} Hour${duration > 1 ? 's' : ''}`;
+            document.getElementById('modal-base-price').innerText = `R${basePrice}`;
+            document.getElementById('modal-subtotal').innerText = `R${subtotal}`;
+            document.getElementById('modal-total-price').innerText = `R${totalPrice}`;
+            
+            document.getElementById('booking-modal').classList.remove('hidden');
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const res = await fetch('/api/bookings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tableId: document.getElementById('form-table-id').value,
+                    date: appState.selectedDate,
+                    startTime: appState.startTime,
+                    durationHours: appState.durationHours,
+                    slot: getFormattedSlot(),
+                    userName: document.getElementById('form-user-name').value,
+                    phone: document.getElementById('form-user-phone').value,
+                    userId,
+                    bookingFee: 15,
+                    totalPrice: document.getElementById('form-total-price').value
+                })
+            });
+
+            if (res.ok) {
+                closeBookingModal();
+                loadData();
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Table reservation failed.');
+            }
+        }
+
+        function onFilterChange() {
+            appState.selectedDate = document.getElementById('selected-date').value;
+            appState.startTime = document.getElementById('start-time').value;
+            appState.durationHours = document.getElementById('duration-hours').value;
+            updateSlotPreview();
+            loadData();
+        }
+
+        function closeBookingModal() { document.getElementById('booking-modal').classList.add('hidden'); }
+    </script>
+</body>
+</html>
