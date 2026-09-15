@@ -71,7 +71,6 @@
 
             <!-- TAB 1: Timeline / Calendar View -->
             <div id="admin-tab-matrix" class="space-y-6">
-                <!-- Visual Daily Matrix -->
                 <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 relative min-h-[300px]">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-bold text-white">Daily Visual Schedule</h3>
@@ -89,9 +88,28 @@
 
             <!-- TAB 2: Day Bookings (All Active & Inactive) -->
             <div id="admin-tab-day-bookings" class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hidden">
-                <div class="flex justify-between items-center mb-4">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                     <h3 class="text-lg font-bold text-white">Day Bookings</h3>
-                  </div>
+
+                    <!-- Daily Payment Summary Header -->
+                    <div class="flex items-center gap-3">
+                        <div class="bg-gray-950 border border-amber-500/30 rounded-xl px-4 py-2 flex items-center gap-3">
+                            <i data-lucide="banknote" class="w-5 h-5 text-amber-400"></i>
+                            <div>
+                                <span class="text-[10px] font-semibold uppercase text-gray-400 block">Day Cash Total</span>
+                                <p id="day-total-cash" class="text-sm font-extrabold text-amber-400">R0.00</p>
+                            </div>
+                        </div>
+                        <div class="bg-gray-950 border border-blue-500/30 rounded-xl px-4 py-2 flex items-center gap-3">
+                            <i data-lucide="credit-card" class="w-5 h-5 text-blue-400"></i>
+                            <div>
+                                <span class="text-[10px] font-semibold uppercase text-gray-400 block">Day Card Total</span>
+                                <p id="day-total-card" class="text-sm font-extrabold text-blue-400">R0.00</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm text-gray-300">
                         <thead class="bg-gray-950 text-xs font-semibold text-gray-400 uppercase border-b border-gray-800">
@@ -124,7 +142,6 @@
                         </select>
                     </div>
 
-                    <!-- Time & Duration Fields -->
                     <div id="time-range-fields" class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Start Time</label>
@@ -159,7 +176,6 @@
                     </div>
                 </div>
                    
-                <!-- Monthly Totals Cards -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div class="bg-gray-950 border border-gray-800 rounded-xl p-4">
                         <span class="text-xs font-semibold text-gray-400 uppercase">Total Revenue</span>
@@ -175,7 +191,6 @@
                     </div>
                 </div>
 
-                <!-- Calendar View Container -->
                 <div id="month-calendar-grid" class="grid grid-cols-7 gap-2 text-center text-xs min-h-[300px] relative"></div>
             </div>
 
@@ -245,7 +260,6 @@
             lucide.createIcons();
         });
 
-        // Toast Notification System
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -276,7 +290,6 @@
             }, 4000);
         }
 
-        // Custom Pop-Up Alert Modal
         function showAlertModal(message, title = 'Notice', type = 'warning') {
             const modal = document.getElementById('alert-modal');
             const titleEl = document.getElementById('alert-modal-title');
@@ -343,11 +356,16 @@
                 appState.tables = Array.isArray(tablesData) ? tablesData : [];
 
                 const dayBookingsRes = await fetch(`/api/admin/day-bookings?date=${appState.selectedDate}`);
-                const dayBookings = await dayBookingsRes.json();
-                
-                // Retains all bookings (both active & inactive)
-                appState.allDateBookings = Array.isArray(dayBookings) ? dayBookings : [];
-                
+                const responseData = await dayBookingsRes.json();
+
+                const dayBookings = responseData.bookings || [];
+                const summary = responseData.summary || { totalCash: 0, totalCard: 0 };
+
+                appState.allDateBookings = dayBookings;
+
+                document.getElementById('day-total-cash').innerText = `R${Number(summary.totalCash).toFixed(2)}`;
+                document.getElementById('day-total-card').innerText = `R${Number(summary.totalCard).toFixed(2)}`;
+
                 populateActionFormControls();
                 renderTimeline();
                 renderAdminBookings(appState.allDateBookings);
@@ -632,8 +650,8 @@
                     track.appendChild(gridLine);
                 }
 
-                // Render active reservations exclusively on visual timeline grid
-                const tableBookings = appState.allDateBookings.filter(b => b.table_id === table.id && b.is_active !== false);
+                // Render ONLY active bookings on the timeline grid
+                const tableBookings = appState.allDateBookings.filter(b => b.table_id === table.id && b.is_active === true);
 
                 tableBookings.forEach(b => {
                     const { startMin, durationMin } = getBookingTimeRange(b);
