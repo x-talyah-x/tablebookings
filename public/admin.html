@@ -119,7 +119,6 @@
                                 <th class="p-3">Time Slot</th>
                                 <th class="p-3">Table</th>
                                 <th class="p-3">Payment Method</th>
-                                <th class="p-3">Status</th>
                                 <th class="p-3">Total Amount</th>
                             </tr>
                         </thead>
@@ -703,11 +702,6 @@
                     methodBadge = `<span class="px-2 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-md font-bold">CASH</span>`;
                 } else if (b.payment_method === 'CARD') {
                     methodBadge = `<span class="px-2 py-0.5 text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-md font-bold">CARD</span>`;
-                }
-
-                let statusBadge = `<span class="px-2 py-0.5 text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-md font-bold">Active</span>`;
-                if (b.is_active === false || b.status === 'CANCELLED') {
-                    statusBadge = `<span class="px-2 py-0.5 text-[10px] bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-md font-bold">Inactive</span>`;
                 }
 
                 tr.innerHTML = `
