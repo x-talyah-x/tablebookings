@@ -179,7 +179,6 @@ app.post('/api/admin/action-item', async (req, res) => {
 
         if (fetchErr) throw fetchErr;
 
-        // Verify each requested slot against all existing active bookings on target tables
         for (const tableId of tableIds) {
             const tableBookings = (existingBookings || []).filter(b => Number(b.table_id) === Number(tableId));
             
@@ -260,30 +259,46 @@ app.post('/api/admin/action-item', async (req, res) => {
     }
 });
 
-// 6. GET DAY BOOKINGS FOR ADMIN TIMELINE
+// 6. GET DAY BOOKINGS & DAILY FINANCIAL TOTALS FOR ADMIN
 app.get('/api/admin/day-bookings', async (req, res) => {
     const { date } = req.query;
+
     const { data, error } = await supabase
         .from('bookings')
         .select('*')
-        .eq('booking_date', date)
-        .eq('is_active', true);
+        .eq('booking_date', date);
 
     if (error) return res.status(500).json({ error: error.message });
-    
-    const mapped = (data || []).map(b => ({
-        ...b,
-        date: b.booking_date,
-        slot: b.time_slot
-    }));
-    
-    res.json(mapped);
+
+    let totalCash = 0;
+    let totalCard = 0;
+
+    const mapped = (data || []).map(b => {
+        const price = Number(b.total_price) || 0;
+
+        if (b.payment_method === 'CASH') totalCash += price;
+        if (b.payment_method === 'CARD') totalCard += price;
+
+        return {
+            ...b,
+            date: b.booking_date,
+            slot: b.time_slot
+        };
+    });
+
+    res.json({
+        bookings: mapped,
+        summary: {
+            totalCash,
+            totalCard,
+            grandTotal: totalCash + totalCard
+        }
+    });
 });
 
-// HELPER: Calculates the exact start and end date strings for any given YYYY-MM
+// HELPER: Calculates exact start/end date strings for YYYY-MM
 function getMonthDateRange(yearMonth) {
     const [year, month] = yearMonth.split('-').map(Number);
-    // Setting day 0 of the NEXT month gives the exact last day of the TARGET month
     const lastDay = new Date(year, month, 0).getDate();
     
     return {
@@ -303,7 +318,7 @@ app.get('/api/admin/export-month-csv', async (req, res) => {
         .from('bookings')
         .select('ref_id, booking_date, time_slot, table_id, user_name, total_price, payment_method, payment_status, status')
         .gte('booking_date', startDate)
-        .lte('booking_date', endDate)
+        .lte('booking_date', endDate);
       
     if (error) return res.status(500).json({ error: error.message });
 
@@ -335,46 +350,6 @@ app.get('/api/admin/month-summary', async (req, res) => {
     if (!month) return res.status(400).json({ error: 'Month parameter is required (YYYY-MM).' });
 
     const { startDate, endDate } = getMonthDateRange(month);
-
-    const { data: bookings, error } = await supabase
-        .from('bookings')
-        .select('*')
-        .gte('booking_date', startDate)
-        .lte('booking_date', endDate)
-
-    if (error) return res.status(500).json({ error: error.message });
-
-    let totalRevenue = 0;
-    let totalCash = 0;
-    let totalCard = 0;
-    const days = {};
-
-    (bookings || []).forEach(b => {
-        const price = Number(b.total_price) || 0;
-        totalRevenue += price;
-
-        if (b.payment_method === 'CASH') totalCash += price;
-        if (b.payment_method === 'CARD') totalCard += price;
-
-        if (!days[b.booking_date]) {
-            days[b.booking_date] = { total: 0, cash: 0, card: 0, count: 0 };
-        }
-        days[b.booking_date].total += price;
-        if (b.payment_method === 'CASH') days[b.booking_date].cash += price;
-        if (b.payment_method === 'CARD') days[b.booking_date].card += price;
-        days[b.booking_date].count += 1;
-    });
-
-    res.json({ totalRevenue, totalCash, totalCard, days });
-});
-
-// 8. MONTHLY FINANCIAL SUMMARY CALCULATIONS
-app.get('/api/admin/month-summary', async (req, res) => {
-    const { month } = req.query;
-    if (!month) return res.status(400).json({ error: 'Month parameter is required (YYYY-MM).' });
-
-    const startDate = `${month}-01`;
-    const endDate = `${month}-31`;
 
     const { data: bookings, error } = await supabase
         .from('bookings')
