@@ -28,21 +28,27 @@
         .animate-toast { animation: toastIn 0.25s ease-out forwards; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between relative">
+<body class="min-h-screen flex flex-col md:flex-row relative">
 
     <!-- TOAST CONTAINER -->
     <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <header class="border-b border-gray-800 bg-gray-950/80 backdrop-blur-md sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center font-bold text-black">A</div>
-                <h1 class="text-xl font-extrabold tracking-tight text-white">BASILS <span class="text-amber-500 text-sm">Admin</span></h1>
-            </div>
+    <!-- LEFT SIDEBAR NAVIGATION -->
+    <aside class="w-full md:w-64 border-b md:border-b-0 md:border-r border-gray-800 bg-gray-950/80 backdrop-blur-md flex-shrink-0 flex flex-col">
+        <div class="p-6 border-b border-gray-800/60 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center font-bold text-black flex-shrink-0">A</div>
+            <h1 class="text-xl font-extrabold tracking-tight text-white">BASILS <span class="text-amber-500 text-sm block md:inline">Admin</span></h1>
         </div>
-    </header>
 
-    <main class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full space-y-8">
+        <nav class="p-4 flex flex-row md:flex-col space-x-2 md:space-x-0 md:space-y-2 overflow-x-auto md:overflow-x-visible">
+            <button id="tab-btn-matrix" onclick="switchAdminTab('matrix')" class="w-full text-left py-3 px-4 text-sm font-bold rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 transition-all whitespace-nowrap">Timeline Calendar View</button>
+            <button id="tab-btn-day-bookings" onclick="switchAdminTab('day-bookings')" class="w-full text-left py-3 px-4 text-sm font-bold rounded-xl text-gray-400 hover:text-white hover:bg-gray-900 transition-all whitespace-nowrap">Day Bookings</button>
+            <button id="tab-btn-actions" onclick="switchAdminTab('actions')" class="w-full text-left py-3 px-4 text-sm font-bold rounded-xl text-gray-400 hover:text-white hover:bg-gray-900 transition-all whitespace-nowrap">Capture Tables</button>
+            <button id="tab-btn-month" onclick="switchAdminTab('month')" class="w-full text-left py-3 px-4 text-sm font-bold rounded-xl text-gray-400 hover:text-white hover:bg-gray-900 transition-all whitespace-nowrap">Monthly Overview</button>
+        </nav>
+    </aside>
+
+    <main class="flex-1 p-4 md:p-8 w-full space-y-8 overflow-y-auto">
         
         <!-- Controls & Date Selection -->
         <div class="bg-gray-900/80 rounded-2xl p-4 border border-gray-800 flex flex-wrap gap-4 items-center justify-between">
@@ -62,14 +68,6 @@
 
         <!-- ADMIN VIEW PANEL -->
         <section id="admin-view" class="space-y-6">
-            
-            <!-- ADMIN TABS NAVIGATION -->
-            <div class="flex border-b border-gray-800 space-x-4 overflow-x-auto">
-                <button id="tab-btn-matrix" onclick="switchAdminTab('matrix')" class="py-3 px-4 text-sm font-bold border-b-2 border-amber-500 text-amber-400 transition-all whitespace-nowrap">Timeline Calendar View</button>
-                <button id="tab-btn-day-bookings" onclick="switchAdminTab('day-bookings')" class="py-3 px-4 text-sm font-bold border-b-2 border-transparent text-gray-400 hover:text-white transition-all whitespace-nowrap">Day Bookings</button>
-                <button id="tab-btn-actions" onclick="switchAdminTab('actions')" class="py-3 px-4 text-sm font-bold border-b-2 border-transparent text-gray-400 hover:text-white transition-all whitespace-nowrap">Capture Tables</button>
-                <button id="tab-btn-month" onclick="switchAdminTab('month')" class="py-3 px-4 text-sm font-bold border-b-2 border-transparent text-gray-400 hover:text-white transition-all whitespace-nowrap">Monthly Overview</button>
-            </div>
 
             <!-- TAB 1: Timeline / Calendar View -->
             <div id="admin-tab-matrix" class="space-y-6">
@@ -310,10 +308,10 @@
                 const btn = document.getElementById(`tab-btn-${t}`);
                 if (t === tab) {
                     el.classList.remove('hidden');
-                    btn.className = "py-3 px-4 text-sm font-bold border-b-2 border-amber-500 text-amber-400 transition-all whitespace-nowrap";
+                    btn.className = "w-full text-left py-3 px-4 text-sm font-bold rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 transition-all whitespace-nowrap";
                 } else {
                     el.classList.add('hidden');
-                    btn.className = "py-3 px-4 text-sm font-bold border-b-2 border-transparent text-gray-400 hover:text-white transition-all whitespace-nowrap";
+                    btn.className = "w-full text-left py-3 px-4 text-sm font-bold rounded-xl text-gray-400 hover:text-white hover:bg-gray-900 transition-all whitespace-nowrap";
                 }
             });
 
