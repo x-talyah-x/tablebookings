@@ -12,6 +12,7 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Helper: Parse standard time strings ("14:00", "02:00 PM") into minutes from midnight
 function parseTimeToMinutes(timeStr) {
     if (!timeStr) return 0;
     const cleanStr = timeStr.trim();
@@ -20,12 +21,13 @@ function parseTimeToMinutes(timeStr) {
         const [h, m] = parts[0].split(':').map(Number);
         let hours = h % 12;
         if (parts[1] === 'PM') hours += 12;
-        return hours * 60 + m;
+        return hours * 60 + (m || 0);
     }
     const [h, m] = cleanStr.split(':').map(Number);
-    return h * 60 + m;
+    return h * 60 + (m || 0);
 }
 
+// Helper: Convert time slots or (startTime + duration) into start/end minute windows
 function convertSlotToRange(slot, startTime, durationHours) {
     if (startTime && durationHours) {
         const startMin = parseTimeToMinutes(startTime);
@@ -41,6 +43,7 @@ function convertSlotToRange(slot, startTime, durationHours) {
     return null;
 }
 
+// Helper: Check minute boundary overlaps between time windows
 function doSlotsOverlap(rangeA, rangeB) {
     if (!rangeA || !rangeB) return false;
     return Math.max(rangeA.startMin, rangeB.startMin) < Math.min(rangeA.endMin, rangeB.endMin);
@@ -82,7 +85,7 @@ app.get('/api/tables/available', async (req, res) => {
     const availableTables = (tables || []).filter(t => {
         const tableBookings = activeBookings.filter(b => Number(b.table_id) === Number(t.id));
         const hasConflict = tableBookings.some(b => {
-            const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
+            const existingRange = convertSlotToRange(b.time_slot, null, null);
             return doSlotsOverlap(targetRange, existingRange);
         });
         return !hasConflict;
@@ -128,7 +131,7 @@ app.get('/api/weekly-availability', async (req, res) => {
             const bookedTableIds = new Set();
 
             dayBookings.forEach(b => {
-                const bRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
+                const bRange = convertSlotToRange(b.time_slot, null, null);
                 if (doSlotsOverlap(slotRange, bRange)) {
                     bookedTableIds.add(Number(b.table_id));
                 }
@@ -165,7 +168,7 @@ app.post('/api/bookings/multi', async (req, res) => {
     for (const tableId of tableIds) {
         const conflict = (activeBookings || []).find(b => {
             if (Number(b.table_id) !== Number(tableId)) return false;
-            const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
+            const existingRange = convertSlotToRange(b.time_slot, null, null);
             return doSlotsOverlap(targetRange, existingRange);
         });
 
@@ -188,15 +191,13 @@ app.post('/api/bookings/multi', async (req, res) => {
             ref_id: `CUE-${Math.floor(100000 + Math.random() * 900000)}`,
             table_id: Number(tableId),
             booking_date: date,
-            start_time: startTime,
-            duration_hours: duration,
             time_slot: slot,
             user_name: userName,
             phone: phone,
             user_identifier: userId,
             booking_fee: fee,
             total_price: subtotal + fee,
-            status: 'RESERVED',
+            status: 'PENDING',
             payment_status: 'PENDING',
             is_active: true
         };
@@ -235,7 +236,7 @@ app.get('/api/admin/day-bookings', async (req, res) => {
     });
 });
 
-// 6. ADMIN ACTION ITEMS (WALK-IN, MAINTENANCE, LEAGUE, & CLEAR)
+// 6. ADMIN ACTION ITEMS (WALK-IN, MAINTENANCE, RESERVED, & CLEAR)
 app.post('/api/admin/action-item', async (req, res) => {
     const { actionType, paymentMethod, tables, slots, date, durationHours, startTimeOverride } = req.body;
 
@@ -246,15 +247,13 @@ app.post('/api/admin/action-item', async (req, res) => {
     try {
         const tableIds = tables.map(Number);
         
-        // Calculate Target Time Window
         let computedSlot = slots ? slots[0] : null;
         let requestRange = null;
 
         if (actionType === 'CLEAR_TABLE') {
-            // Target specific slot if passed, or default to current hour block
             const now = new Date();
             const startMin = startTimeOverride ? parseTimeToMinutes(startTimeOverride) : (now.getHours() * 60 + now.getMinutes());
-            requestRange = { startMin, endMin: startMin + 60 }; // Target 1-hour slot window
+            requestRange = { startMin, endMin: startMin + 60 };
 
             const { data: existingBookings, error: fetchErr } = await supabase
                 .from('bookings')
@@ -265,10 +264,9 @@ app.post('/api/admin/action-item', async (req, res) => {
 
             if (fetchErr) throw fetchErr;
 
-            // Only clear bookings that overlap with this target time range
             const bookingIdsToDeactivate = (existingBookings || [])
                 .filter(b => {
-                    const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
+                    const existingRange = convertSlotToRange(b.time_slot, null, null);
                     return doSlotsOverlap(requestRange, existingRange);
                 })
                 .map(b => b.id);
@@ -285,12 +283,10 @@ app.post('/api/admin/action-item', async (req, res) => {
             return res.json({ success: true, message: `Cleared target slot for table(s).` });
         }
 
-        // Handle computed range for WALK_IN, MAINTENANCE, RESERVED
         if (computedSlot) {
             requestRange = convertSlotToRange(computedSlot, null, durationHours);
         }
 
-        // Check for conflicting active bookings
         const { data: existingBookings, error: fetchErr } = await supabase
             .from('bookings')
             .select('*')
@@ -303,7 +299,7 @@ app.post('/api/admin/action-item', async (req, res) => {
         for (const tableId of tableIds) {
             const tableBookings = (existingBookings || []).filter(b => Number(b.table_id) === Number(tableId));
             const conflict = tableBookings.find(b => {
-                const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
+                const existingRange = convertSlotToRange(b.time_slot, null, null);
                 return doSlotsOverlap(requestRange, existingRange);
             });
 
@@ -314,7 +310,6 @@ app.post('/api/admin/action-item', async (req, res) => {
             }
         }
 
-        // Retrieve pricing table
         const { data: dbTables, error: tableError } = await supabase.from('pool_tables').select('id, price');
         if (tableError) throw tableError;
 
