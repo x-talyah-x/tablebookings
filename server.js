@@ -62,7 +62,153 @@ app.get('/api/tables', async (req, res) => {
     res.json(data || []);
 });
 
-// 2. GET DAY BOOKINGS & DAILY FINANCIAL TOTALS FOR ADMIN
+// 2. GET AVAILABLE TABLES FOR A SPECIFIC TIME SLOT
+app.get('/api/tables/available', async (req, res) => {
+    const { date, startTime, duration } = req.query;
+
+    const { data: tables, error: tablesErr } = await supabase.from('pool_tables').select('*').order('id');
+    if (tablesErr) return res.status(500).json({ error: tablesErr.message });
+
+    const { data: activeBookings, error: bookingsErr } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('booking_date', date)
+        .eq('is_active', true);
+
+    if (bookingsErr) return res.status(500).json({ error: bookingsErr.message });
+
+    const targetRange = convertSlotToRange(null, startTime, duration);
+
+    const availableTables = (tables || []).filter(t => {
+        const tableBookings = activeBookings.filter(b => Number(b.table_id) === Number(t.id));
+        const hasConflict = tableBookings.some(b => {
+            const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
+            return doSlotsOverlap(targetRange, existingRange);
+        });
+        return !hasConflict;
+    });
+
+    res.json(availableTables);
+});
+
+// 3. WEEKLY AVAILABILITY GRID MATRIX
+app.get('/api/weekly-availability', async (req, res) => {
+    const { startDate } = req.query;
+    if (!startDate) return res.status(400).json({ error: 'startDate parameter required (YYYY-MM-DD)' });
+
+    const dates = [];
+    const baseDate = new Date(startDate);
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(baseDate);
+        d.setDate(d.getDate() + i);
+        dates.push(d.toISOString().split('T')[0]);
+    }
+
+    const { data: tables, error: tableErr } = await supabase.from('pool_tables').select('id');
+    if (tableErr) return res.status(500).json({ error: tableErr.message });
+    const totalTablesCount = tables ? tables.length : 22;
+
+    const { data: bookings, error: bookingsErr } = await supabase
+        .from('bookings')
+        .select('*')
+        .in('booking_date', dates)
+        .eq('is_active', true);
+
+    if (bookingsErr) return res.status(500).json({ error: bookingsErr.message });
+
+    const result = {};
+    const hours = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+
+    dates.forEach(d => {
+        result[d] = {};
+        const dayBookings = (bookings || []).filter(b => b.booking_date === d);
+
+        hours.forEach(hour => {
+            const slotRange = { startMin: hour * 60, endMin: (hour + 1) * 60 };
+            const bookedTableIds = new Set();
+
+            dayBookings.forEach(b => {
+                const bRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
+                if (doSlotsOverlap(slotRange, bRange)) {
+                    bookedTableIds.add(Number(b.table_id));
+                }
+            });
+
+            const available = Math.max(0, totalTablesCount - bookedTableIds.size);
+            result[d][hour] = { available, total: totalTablesCount };
+        });
+    });
+
+    res.json(result);
+});
+
+// 4. MULTI-TABLE USER BOOKINGS
+app.post('/api/bookings/multi', async (req, res) => {
+    const { tableIds, date, startTime, durationHours, slot, userName, phone, userId, bookingFeePerTable, totalPrice } = req.body;
+
+    if (!tableIds || !Array.isArray(tableIds) || tableIds.length === 0) {
+        return res.status(400).json({ error: 'Please select at least one table.' });
+    }
+
+    const targetRange = convertSlotToRange(slot, startTime, durationHours);
+
+    // Verify availability for all requested tables
+    const { data: activeBookings, error: fetchErr } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('booking_date', date)
+        .in('table_id', tableIds)
+        .eq('is_active', true);
+
+    if (fetchErr) return res.status(500).json({ error: fetchErr.message });
+
+    for (const tableId of tableIds) {
+        const conflict = (activeBookings || []).find(b => {
+            if (Number(b.table_id) !== Number(tableId)) return false;
+            const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
+            return doSlotsOverlap(targetRange, existingRange);
+        });
+
+        if (conflict) {
+            return res.status(409).json({ error: `Table ${tableId} is no longer available for the selected slot.` });
+        }
+    }
+
+    const { data: dbTables } = await supabase.from('pool_tables').select('id, price');
+    const priceMap = {};
+    (dbTables || []).forEach(t => priceMap[t.id] = Number(t.price) || 50);
+
+    const fee = Number(bookingFeePerTable) || 15;
+    const duration = Number(durationHours) || 1;
+
+    const rows = tableIds.map(tableId => {
+        const basePrice = priceMap[tableId] || 50;
+        const subtotal = basePrice * duration;
+        return {
+            ref_id: `CUE-${Math.floor(100000 + Math.random() * 900000)}`,
+            table_id: Number(tableId),
+            booking_date: date,
+            start_time: startTime,
+            duration_hours: duration,
+            time_slot: slot,
+            user_name: userName,
+            phone: phone,
+            user_identifier: userId,
+            booking_fee: fee,
+            total_price: subtotal + fee,
+            status: 'RESERVED',
+            payment_status: 'PENDING',
+            is_active: true
+        };
+    });
+
+    const { data, error } = await supabase.from('bookings').insert(rows).select();
+    if (error) return res.status(500).json({ error: error.message });
+
+    res.status(201).json({ success: true, count: data.length, bookings: data });
+});
+
+// 5. GET DAY BOOKINGS & DAILY FINANCIAL TOTALS FOR ADMIN
 app.get('/api/admin/day-bookings', async (req, res) => {
     const { date } = req.query;
 
@@ -89,7 +235,7 @@ app.get('/api/admin/day-bookings', async (req, res) => {
     });
 });
 
-// 3. ADMIN ACTION ITEMS (WALK-IN, MAINTENANCE, LEAGUE, & CLEAR)
+// 6. ADMIN ACTION ITEMS (WALK-IN, MAINTENANCE, LEAGUE, & CLEAR)
 app.post('/api/admin/action-item', async (req, res) => {
     const { actionType, paymentMethod, tables, slots, date, durationHours, startTimeOverride } = req.body;
 
@@ -222,7 +368,7 @@ app.post('/api/admin/action-item', async (req, res) => {
     }
 });
 
-// 4. EXPORT MONTHLY CSV
+// 7. EXPORT MONTHLY CSV
 app.get('/api/admin/export-month-csv', async (req, res) => {
     const { month } = req.query;
     if (!month) return res.status(400).json({ error: 'Month parameter is required (YYYY-MM).' });
@@ -252,7 +398,7 @@ app.get('/api/admin/export-month-csv', async (req, res) => {
     return res.send(csvRows.join('\n'));
 });
 
-// 5. MONTHLY SUMMARY
+// 8. MONTHLY SUMMARY
 app.get('/api/admin/month-summary', async (req, res) => {
     const { month } = req.query;
     if (!month) return res.status(400).json({ error: 'Month parameter is required (YYYY-MM).' });
