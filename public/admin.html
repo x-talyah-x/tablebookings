@@ -395,7 +395,7 @@
             } else if (type === 'CLEAR_TABLE') {
                 timeFields.classList.remove('hidden');
                 walkinFields.classList.add('hidden');
-                durationWrapper.classList.add('hidden'); // Clear works on a 1-hr window block
+                durationWrapper.classList.add('hidden');
             }
         }
 
@@ -427,7 +427,6 @@
             let generatedSlot = "";
 
             if (actionType === 'WALK_IN') {
-                // User Story 1: Walk-In starts now + dynamic allocated hours
                 durationHours = document.getElementById('walkin-duration').value || 2;
                 const endTime = calculateEndTime(startTime, durationHours);
                 generatedSlot = `${formatTime12H(startTime)} - ${formatTime12H(endTime)}`;
@@ -447,22 +446,20 @@
                 return;
             } 
             else if (actionType === 'MAINTENANCE') {
-                // User Story 2: Log maintenance from now until 11 PM
                 const closingHourMin = 23 * 60;
                 const currentMin = now.getHours() * 60 + now.getMinutes();
-                durationHours = Math.max(1, Math.ceil((closingHourMin - currentMin) / 60));
+                const remainingMin = Math.max(60, closingHourMin - currentMin);
                 
+                durationHours = (remainingMin / 60).toFixed(2);
                 generatedSlot = `${formatTime12H(startTime)} - 11:00 PM`;
             } 
             else if (actionType === 'RESERVED') {
-                // User Story 3: Reserve tables for League by selecting start & end times
                 startTime = document.getElementById('action-start-time').value;
                 durationHours = document.getElementById('action-duration').value;
                 const endTime = calculateEndTime(startTime, durationHours);
                 generatedSlot = `${formatTime12H(startTime)} - ${formatTime12H(endTime)}`;
             } 
             else if (actionType === 'CLEAR_TABLE') {
-                // User Story 4: Clear table from time clicked for the next hour window
                 startTime = document.getElementById('action-start-time').value || currentTimeStr;
                 durationHours = 1;
                 const endTime = calculateEndTime(startTime, durationHours);
@@ -624,7 +621,7 @@
         function getBookingTimeRange(booking) {
             if (booking.start_time && booking.duration_hours) {
                 const start = parseTimeToMinutes(booking.start_time);
-                return { startMin: start, durationMin: parseInt(booking.duration_hours) * 60 };
+                return { startMin: start, durationMin: parseFloat(booking.duration_hours) * 60 };
             }
             const slot = booking.time_slot || booking.slot;
             if (slot && slot.includes('-')) {
@@ -637,7 +634,6 @@
             return { startMin: 660, durationMin: 60 };
         }
 
-        // User Story 5: Visual Timeline Matrix View
         function renderTimeline() {
             document.getElementById('matrix-date-label').innerText = `Date: ${appState.selectedDate}`;
             const headerContainer = document.getElementById('timeline-header');
