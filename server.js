@@ -428,5 +428,153 @@ app.get('/api/admin/month-summary', async (req, res) => {
     res.json({ totalRevenue, totalCash, totalCard, days });
 });
 
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || 'sk_test_your_paystack_secret_key';
+
+// 9. INITIALIZE PAYSTACK TRANSACTION
+app.post('/api/bookings/initialize-payment', async (req, res) => {
+    try {
+        const { tableIds, date, startTime, durationHours, slot, userName, email, phone, totalPrice } = req.body;
+
+        if (!tableIds || !Array.isArray(tableIds) || tableIds.length === 0) {
+            return res.status(400).json({ error: 'Please select at least one table.' });
+        }
+
+        const targetRange = convertSlotToRange(slot, startTime, durationHours);
+
+        // Verify real-time table availability against active bookings
+        const { data: activeBookings, error: fetchErr } = await supabase
+            .from('bookings')
+            .select('*')
+            .eq('booking_date', date)
+            .in('table_id', tableIds)
+            .eq('is_active', true);
+
+        if (fetchErr) return res.status(500).json({ error: fetchErr.message });
+
+        for (const tableId of tableIds) {
+            const conflict = (activeBookings || []).find(b => {
+                if (Number(b.table_id) !== Number(tableId)) return false;
+                const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
+                return doSlotsOverlap(targetRange, existingRange);
+            });
+
+            if (conflict) {
+                return res.status(409).json({ error: `Table ${tableId} is no longer available for the selected slot.` });
+            }
+        }
+
+        const amountInCents = Math.round(parseFloat(totalPrice) * 100);
+
+        const paystackPayload = {
+            email: email || `${phone.replace(/\D/g, '')}@cuecraft.com`,
+            amount: amountInCents,
+            currency: 'ZAR',
+            callback_url: `${req.protocol}://${req.get('host')}/payment-success.html`,
+            metadata: {
+                tableIds,
+                date,
+                startTime,
+                durationHours,
+                slot,
+                userName,
+                phone
+            }
+        };
+
+        const response = await fetch('https://api.paystack.co/transaction/initialize', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(paystackPayload)
+        });
+
+        const paystackData = await response.json();
+
+        if (!paystackData.status) {
+            return res.status(400).json({ error: paystackData.message || 'Payment initialization failed.' });
+        }
+
+        res.json({
+            authorization_url: paystackData.data.authorization_url,
+            reference: paystackData.data.reference
+        });
+    } catch (err) {
+        console.error('Paystack initialization error:', err);
+        res.status(500).json({ error: 'Internal server error while initializing payment.' });
+    }
+});
+
+// 10. VERIFY PAYSTACK PAYMENT & PERSIST BOOKINGS
+app.post('/api/bookings/verify-payment', async (req, res) => {
+    const { reference } = req.body;
+    if (!reference) return res.status(400).json({ error: 'Transaction reference is required.' });
+
+    try {
+        const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` }
+        });
+
+        const paystackData = await response.json();
+
+        if (!paystackData.status || paystackData.data.status !== 'success') {
+            return res.status(400).json({ error: 'Payment verification failed or transaction incomplete.' });
+        }
+
+        const data = paystackData.data;
+        const meta = data.metadata;
+        const { tableIds, date, startTime, durationHours, slot, userName, phone } = meta;
+
+        // Check if bookings for this transaction reference already exist
+        const { data: existing } = await supabase
+            .from('bookings')
+            .select('id')
+            .eq('ref_id', reference);
+
+        if (existing && existing.length > 0) {
+            return res.json({ success: true, message: 'Reservation already confirmed.' });
+        }
+
+        const { data: dbTables } = await supabase.from('pool_tables').select('id, price');
+        const priceMap = {};
+        (dbTables || []).forEach(t => priceMap[t.id] = Number(t.price) || 50);
+
+        const fee = 15;
+        const duration = Number(durationHours) || 1;
+
+        const rows = tableIds.map(tableId => {
+            const basePrice = priceMap[tableId] || 50;
+            const subtotal = basePrice * duration;
+            return {
+                ref_id: reference,
+                table_id: Number(tableId),
+                booking_date: date,
+                start_time: startTime,
+                duration_hours: duration,
+                time_slot: slot,
+                user_name: userName,
+                phone: phone,
+                user_identifier: 'ONLINE_PAYSTACK',
+                booking_fee: fee,
+                total_price: subtotal + fee,
+                status: 'RESERVED',
+                payment_status: 'PAID',
+                payment_method: 'CARD',
+                is_active: true
+            };
+        });
+
+        const { data: inserted, error } = await supabase.from('bookings').insert(rows).select();
+        if (error) return res.status(500).json({ error: error.message });
+
+        res.status(201).json({ success: true, count: inserted.length, bookings: inserted });
+    } catch (err) {
+        console.error('Paystack verification error:', err);
+        res.status(500).json({ error: 'Internal server error while verifying payment.' });
+    }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`CueCraft Server running on port ${PORT}`));
