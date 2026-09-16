@@ -30,10 +30,9 @@
 </head>
 <body class="min-h-screen flex flex-col md:flex-row relative">
 
-    <!-- TOAST CONTAINER -->
     <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- LEFT SIDEBAR NAVIGATION -->
+    <!-- LEFT SIDEBAR -->
     <aside class="w-full md:w-64 border-b md:border-b-0 md:border-r border-gray-800 bg-gray-950/80 backdrop-blur-md flex-shrink-0 flex flex-col">
         <div class="p-6 border-b border-gray-800/60 flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center font-bold text-black flex-shrink-0">A</div>
@@ -50,7 +49,6 @@
 
     <main class="flex-1 p-4 md:p-8 w-full space-y-8 overflow-y-auto">
         
-        <!-- Controls & Date Selection -->
         <div class="bg-gray-900/80 rounded-2xl p-4 border border-gray-800 flex flex-wrap gap-4 items-center justify-between">
             <div class="flex gap-4 items-center">
                 <div>
@@ -58,7 +56,6 @@
                     <input type="date" id="selected-date" class="bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
                 </div>
             </div>
-            <!-- Legend -->
             <div class="flex items-center gap-4 text-xs">
                 <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500/80 border border-rose-400"></span><span class="text-gray-400">League / Reserved</span></div>
                 <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-500/80 border border-blue-400"></span><span class="text-gray-400">Walk-In</span></div>
@@ -66,10 +63,9 @@
             </div>
         </div>
 
-        <!-- ADMIN VIEW PANEL -->
         <section id="admin-view" class="space-y-6">
 
-            <!-- TAB 1: Timeline / Calendar View -->
+            <!-- TAB 1: Timeline Matrix View -->
             <div id="admin-tab-matrix" class="space-y-6">
                 <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 relative min-h-[300px]">
                     <div class="flex justify-between items-center mb-4">
@@ -86,12 +82,11 @@
                 </div>
             </div>
 
-            <!-- TAB 2: Day Bookings (All Active & Inactive) -->
+            <!-- TAB 2: Day Bookings -->
             <div id="admin-tab-day-bookings" class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hidden">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                     <h3 class="text-lg font-bold text-white">Day Bookings</h3>
 
-                    <!-- Daily Payment Summary Header -->
                     <div class="flex items-center gap-3">
                         <div class="bg-gray-950 border border-amber-500/30 rounded-xl px-4 py-2 flex items-center gap-3">
                             <i data-lucide="banknote" class="w-5 h-5 text-amber-400"></i>
@@ -127,29 +122,35 @@
                 </div>
             </div>
 
-            <!-- TAB 3: Action Items -->
+            <!-- TAB 3: Actions Form -->
             <div id="admin-tab-actions" class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hidden">
                 <h3 class="text-lg font-bold text-amber-400 mb-4">Admin Action Management</h3>
                 <form id="action-items-form" class="space-y-4 max-w-2xl relative">
                     <div>
                         <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Action Type</label>
                         <select id="action-type" onchange="toggleActionFields()" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
-                            <option value="WALK_IN">Walk In</option>
-                            <option value="RESERVED">Bulk Book for League</option>
-                            <option value="MAINTENANCE">Maintenance</option>
-                            <option value="CLEAR_TABLE">Clear Tables</option>
+                            <option value="WALK_IN">Walk In (Starts Now)</option>
+                            <option value="MAINTENANCE">Log Maintenance (Until 11 PM)</option>
+                            <option value="RESERVED">Reserve Tables for League</option>
+                            <option value="CLEAR_TABLE">Clear Target Slot (1 Hour Window)</option>
                         </select>
                     </div>
 
-                    <div id="time-range-fields" class="grid grid-cols-2 gap-4">
+                    <!-- CONDITIONAL TIME FIELDS -->
+                    <div id="time-range-fields" class="grid grid-cols-2 gap-4 hidden">
                         <div>
                             <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Start Time</label>
                             <input type="time" id="action-start-time" value="11:00" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
                         </div>
-                        <div>
+                        <div id="duration-field-wrapper">
                             <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Duration (Hours)</label>
-                            <input type="number" id="action-duration" min="1" max="12" value="1" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
+                            <input type="number" id="action-duration" min="1" max="12" value="2" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
                         </div>
+                    </div>
+
+                    <div id="walkin-hours-field" class="block">
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Walk-In Duration (Hours)</label>
+                        <input type="number" id="walkin-duration" min="1" max="12" value="2" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
                     </div>
 
                     <div>
@@ -207,7 +208,7 @@
                     <span class="text-gray-400">Calculated Total:</span>
                     <span id="modal-calculated-price" class="font-bold text-felt-400 text-base">R0.00</span>
                 </div>
-                <p class="text-xs text-gray-500">*Price dynamically calculated based on individual table rates and duration.</p>
+                <p class="text-xs text-gray-500">*Price dynamically calculated based on table rates and allocated hours.</p>
             </div>
 
             <div>
@@ -255,6 +256,7 @@
             document.getElementById('selected-date').addEventListener('change', onDateChange);
             document.getElementById('action-items-form').addEventListener('submit', handleActionFormSubmit);
 
+            toggleActionFields();
             loadAdminData();
             lucide.createIcons();
         });
@@ -370,18 +372,30 @@
                 renderAdminBookings(appState.allDateBookings);
             } catch (err) {
                 console.error('Error loading admin data:', err);
-                showToast('Failed to load dashboard data. Please try again.', 'error');
+                showToast('Failed to load dashboard data.', 'error');
             }
         }
 
         function toggleActionFields() {
             const type = document.getElementById('action-type').value;
             const timeFields = document.getElementById('time-range-fields');
+            const walkinFields = document.getElementById('walkin-hours-field');
+            const durationWrapper = document.getElementById('duration-field-wrapper');
 
-            if (type === 'CLEAR_TABLE') {
+            if (type === 'WALK_IN') {
+                timeFields.classList.add('hidden');
+                walkinFields.classList.remove('hidden');
+            } else if (type === 'MAINTENANCE') {
+                timeFields.classList.add('hidden');
+                walkinFields.classList.add('hidden');
+            } else if (type === 'RESERVED') {
                 timeFields.classList.remove('hidden');
-            } else {
+                walkinFields.classList.add('hidden');
+                durationWrapper.classList.remove('hidden');
+            } else if (type === 'CLEAR_TABLE') {
                 timeFields.classList.remove('hidden');
+                walkinFields.classList.add('hidden');
+                durationWrapper.classList.add('hidden'); // Clear works on a 1-hr window block
             }
         }
 
@@ -398,9 +412,6 @@
         async function handleActionFormSubmit(e) {
             e.preventDefault();
             const actionType = document.getElementById('action-type').value;
-            const startTime = document.getElementById('action-start-time').value;
-            const duration = document.getElementById('action-duration').value;
-            
             const selectedTables = Array.from(document.querySelectorAll('input[name="action-tables"]:checked')).map(el => el.value);
 
             if (selectedTables.length === 0) {
@@ -408,22 +419,54 @@
                 return;
             }
 
-            const endTime = calculateEndTime(startTime, duration);
-            const generatedSlot = `${formatTime12H(startTime)} - ${formatTime12H(endTime)}`;
+            const now = new Date();
+            const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+            let startTime = currentTimeStr;
+            let durationHours = 1;
+            let generatedSlot = "";
 
             if (actionType === 'WALK_IN') {
-                const calculatedPrice = calculateWalkInPrice(selectedTables, duration);
+                // User Story 1: Walk-In starts now + dynamic allocated hours
+                durationHours = document.getElementById('walkin-duration').value || 2;
+                const endTime = calculateEndTime(startTime, durationHours);
+                generatedSlot = `${formatTime12H(startTime)} - ${formatTime12H(endTime)}`;
+
+                const calculatedPrice = calculateWalkInPrice(selectedTables, durationHours);
                 appState.pendingWalkInData = {
                     actionType,
                     price: calculatedPrice,
                     tables: selectedTables,
                     slots: [generatedSlot],
                     date: appState.selectedDate,
-                    durationHours: duration
+                    durationHours,
+                    startTimeOverride: startTime
                 };
                 document.getElementById('modal-calculated-price').innerText = `R${calculatedPrice.toFixed(2)}`;
                 document.getElementById('payment-modal').classList.remove('hidden');
                 return;
+            } 
+            else if (actionType === 'MAINTENANCE') {
+                // User Story 2: Log maintenance from now until 11 PM
+                const closingHourMin = 23 * 60;
+                const currentMin = now.getHours() * 60 + now.getMinutes();
+                durationHours = Math.max(1, Math.ceil((closingHourMin - currentMin) / 60));
+                
+                generatedSlot = `${formatTime12H(startTime)} - 11:00 PM`;
+            } 
+            else if (actionType === 'RESERVED') {
+                // User Story 3: Reserve tables for League by selecting start & end times
+                startTime = document.getElementById('action-start-time').value;
+                durationHours = document.getElementById('action-duration').value;
+                const endTime = calculateEndTime(startTime, durationHours);
+                generatedSlot = `${formatTime12H(startTime)} - ${formatTime12H(endTime)}`;
+            } 
+            else if (actionType === 'CLEAR_TABLE') {
+                // User Story 4: Clear table from time clicked for the next hour window
+                startTime = document.getElementById('action-start-time').value || currentTimeStr;
+                durationHours = 1;
+                const endTime = calculateEndTime(startTime, durationHours);
+                generatedSlot = `${formatTime12H(startTime)} - ${formatTime12H(endTime)}`;
             }
 
             await executeActionAPI({
@@ -431,7 +474,8 @@
                 tables: selectedTables,
                 slots: [generatedSlot],
                 date: appState.selectedDate,
-                durationHours: duration
+                durationHours,
+                startTimeOverride: startTime
             });
         }
 
@@ -478,6 +522,7 @@
                 if (res.ok) {
                     showToast('Action item successfully applied!', 'success');
                     document.getElementById('action-items-form').reset();
+                    toggleActionFields();
                     await loadAdminData();
                     switchAdminTab('matrix');
                 } else {
@@ -592,6 +637,7 @@
             return { startMin: 660, durationMin: 60 };
         }
 
+        // User Story 5: Visual Timeline Matrix View
         function renderTimeline() {
             document.getElementById('matrix-date-label').innerText = `Date: ${appState.selectedDate}`;
             const headerContainer = document.getElementById('timeline-header');
@@ -649,7 +695,6 @@
                     track.appendChild(gridLine);
                 }
 
-                // Render ONLY active bookings on the timeline grid
                 const tableBookings = appState.allDateBookings.filter(b => b.table_id === table.id && b.is_active === true);
 
                 tableBookings.forEach(b => {
