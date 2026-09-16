@@ -46,6 +46,16 @@ function doSlotsOverlap(rangeA, rangeB) {
     return Math.max(rangeA.startMin, rangeB.startMin) < Math.min(rangeA.endMin, rangeB.endMin);
 }
 
+function getMonthDateRange(yearMonth) {
+    const [year, month] = yearMonth.split('-').map(Number);
+    const lastDay = new Date(year, month, 0).getDate();
+    
+    return {
+        startDate: `${yearMonth}-01`,
+        endDate: `${yearMonth}-${String(lastDay).padStart(2, '0')}`
+    };
+}
+
 // 1. GET ALL POOL TABLES
 app.get('/api/tables', async (req, res) => {
     const { data, error } = await supabase.from('pool_tables').select('*').order('id');
@@ -76,11 +86,10 @@ app.get('/api/tables/available', async (req, res) => {
 
         const availableTables = tables.filter(table => {
             const tableBookings = bookings.filter(b => b.table_id === table.id);
-            const hasConflict = tableBookings.some(booking => {
+            return !tableBookings.some(booking => {
                 const existingRange = convertSlotToRange(booking.time_slot, booking.start_time, booking.duration_hours);
                 return doSlotsOverlap(requestRange, existingRange);
             });
-            return !hasConflict;
         });
 
         res.json(availableTables);
@@ -146,7 +155,7 @@ app.post('/api/bookings', async (req, res) => {
     res.status(201).json(data);
 });
 
-// 5. ADMIN ACTION ITEMS (WITH OVERLAP CONFLICT CHECK)
+// 5. ADMIN ACTION ITEMS
 app.post('/api/admin/action-item', async (req, res) => {
     const { actionType, paymentMethod, tables, slots, date, durationHours } = req.body;
 
@@ -157,7 +166,6 @@ app.post('/api/admin/action-item', async (req, res) => {
     try {
         const tableIds = tables.map(Number);
 
-        // CLEAR TABLES ACTION: Perform Soft Delete (is_active = false)
         if (actionType === 'CLEAR_TABLE') {
             const { error: softDeleteErr } = await supabase
                 .from('bookings')
@@ -169,7 +177,6 @@ app.post('/api/admin/action-item', async (req, res) => {
             return res.json({ success: true, message: 'Bookings soft-deleted for specified tables and date.' });
         }
 
-        // 1. CHECK FOR OVERLAPPING ACTIVE BOOKINGS
         const { data: existingBookings, error: fetchErr } = await supabase
             .from('bookings')
             .select('*')
@@ -198,7 +205,6 @@ app.post('/api/admin/action-item', async (req, res) => {
             }
         }
 
-        // 2. RETRIEVE DEFAULT POOL TABLE PRICING
         const { data: dbTables, error: tableError } = await supabase
             .from('pool_tables')
             .select('id, price');
@@ -211,7 +217,6 @@ app.post('/api/admin/action-item', async (req, res) => {
         const duration = Number(durationHours) || 1;
         const insertRows = [];
 
-        // 3. BUILD INSERT PAYLOAD
         tables.forEach(tableId => {
             const numericTableId = Number(tableId);
             const tableRate = tablePriceMap[numericTableId] || 60.00;
@@ -248,7 +253,6 @@ app.post('/api/admin/action-item', async (req, res) => {
             });
         });
 
-        // 4. EXECUTE INSERT
         const { data, error } = await supabase.from('bookings').insert(insertRows).select();
         if (error) throw error;
 
@@ -295,17 +299,6 @@ app.get('/api/admin/day-bookings', async (req, res) => {
         }
     });
 });
-
-// HELPER: Calculates exact start/end date strings for YYYY-MM
-function getMonthDateRange(yearMonth) {
-    const [year, month] = yearMonth.split('-').map(Number);
-    const lastDay = new Date(year, month, 0).getDate();
-    
-    return {
-        startDate: `${yearMonth}-01`,
-        endDate: `${yearMonth}-${String(lastDay).padStart(2, '0')}`
-    };
-}
 
 // 7. EXPORT MONTHLY BOOKINGS CSV
 app.get('/api/admin/export-month-csv', async (req, res) => {
