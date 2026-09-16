@@ -46,6 +46,15 @@ function doSlotsOverlap(rangeA, rangeB) {
     return Math.max(rangeA.startMin, rangeB.startMin) < Math.min(rangeA.endMin, rangeB.endMin);
 }
 
+function getMonthDateRange(yearMonth) {
+    const [year, month] = yearMonth.split('-').map(Number);
+    const lastDay = new Date(year, month, 0).getDate();
+    return {
+        startDate: `${yearMonth}-01`,
+        endDate: `${yearMonth}-${String(lastDay).padStart(2, '0')}`
+    };
+}
+
 // 1. GET ALL POOL TABLES
 app.get('/api/tables', async (req, res) => {
     const { data, error } = await supabase.from('pool_tables').select('*').order('id');
@@ -53,213 +62,7 @@ app.get('/api/tables', async (req, res) => {
     res.json(data || []);
 });
 
-// 2. GET AVAILABLE TABLES BY TIME SLOT OVERLAP
-app.get('/api/tables/available', async (req, res) => {
-    const { date, startTime, duration, slot } = req.query;
-
-    if (!date || (!slot && (!startTime || !duration))) {
-        return res.status(400).json({ error: 'Date and valid time details are required.' });
-    }
-
-    try {
-        const requestRange = convertSlotToRange(slot, startTime, duration);
-
-        const { data: tables, error: tablesError } = await supabase.from('pool_tables').select('*').order('id');
-        if (tablesError) throw tablesError;
-
-        const { data: bookings, error: bookingsError } = await supabase
-            .from('bookings')
-            .select('*')
-            .eq('booking_date', date)
-            .eq('is_active', true);
-        if (bookingsError) throw bookingsError;
-
-        const availableTables = tables.filter(table => {
-            const tableBookings = bookings.filter(b => b.table_id === table.id);
-            const hasConflict = tableBookings.some(booking => {
-                const existingRange = convertSlotToRange(booking.time_slot, booking.start_time, booking.duration_hours);
-                return doSlotsOverlap(requestRange, existingRange);
-            });
-            return !hasConflict;
-        });
-
-        res.json(availableTables);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// 3. GET BOOKINGS BY DATE AND SLOT
-app.get('/api/bookings', async (req, res) => {
-    const { date, slot } = req.query;
-    let query = supabase.from('bookings').select('*').eq('is_active', true);
-    
-    if (date) query = query.eq('booking_date', date);
-    if (slot) query = query.eq('time_slot', slot);
-
-    const { data, error } = await query;
-    if (error) return res.status(500).json({ error: error.message });
-    res.json(data);
-});
-
-// 4. CREATE DIRECT CLIENT BOOKING
-app.post('/api/bookings', async (req, res) => {
-    const { tableId, date, startTime, durationHours, slot, userName, phone, userId, bookingFee, totalPrice } = req.body;
-    const requestRange = convertSlotToRange(slot, startTime, durationHours);
-
-    const { data: existingBookings, error: fetchErr } = await supabase
-        .from('bookings')
-        .select('*')
-        .eq('table_id', tableId)
-        .eq('booking_date', date)
-        .eq('is_active', true);
-
-    if (fetchErr) return res.status(500).json({ error: fetchErr.message });
-
-    const hasConflict = (existingBookings || []).some(b => {
-        const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
-        return doSlotsOverlap(requestRange, existingRange);
-    });
-
-    if (hasConflict) {
-        return res.status(409).json({ error: 'Table is already reserved for this time slot.' });
-    }
-
-    const refId = 'REF-' + Math.floor(1000 + Math.random() * 9000);
-
-    const { data, error } = await supabase.from('bookings').insert([{
-        ref_id: refId,
-        table_id: tableId,
-        booking_date: date,
-        time_slot: slot,
-        user_name: userName,
-        phone,
-        booking_fee: bookingFee || 15,
-        total_price: totalPrice,
-        status: 'CONFIRMED',
-        payment_status: 'UNPAID',
-        user_identifier: userId,
-        is_active: true
-    }]).select().single();
-
-    if (error) return res.status(500).json({ error: error.message });
-    res.status(201).json(data);
-});
-
-// 5. ADMIN ACTION ITEMS (WITH OVERLAP CONFLICT CHECK)
-app.post('/api/admin/action-item', async (req, res) => {
-    const { actionType, paymentMethod, tables, slots, date, durationHours } = req.body;
-
-    if (!tables || !slots || tables.length === 0 || slots.length === 0) {
-        return res.status(400).json({ error: 'Tables and slots are required.' });
-    }
-
-    try {
-        const tableIds = tables.map(Number);
-
-        // CLEAR TABLES ACTION: Perform Soft Delete (is_active = false)
-        if (actionType === 'CLEAR_TABLE') {
-            const { error: softDeleteErr } = await supabase
-                .from('bookings')
-                .update({ is_active: false })
-                .eq('booking_date', date)
-                .in('table_id', tableIds);
-
-            if (softDeleteErr) throw softDeleteErr;
-            return res.json({ success: true, message: 'Bookings soft-deleted for specified tables and date.' });
-        }
-
-        // 1. CHECK FOR OVERLAPPING ACTIVE BOOKINGS
-        const { data: existingBookings, error: fetchErr } = await supabase
-            .from('bookings')
-            .select('*')
-            .eq('booking_date', date)
-            .in('table_id', tableIds)
-            .eq('is_active', true);
-
-        if (fetchErr) throw fetchErr;
-
-        for (const tableId of tableIds) {
-            const tableBookings = (existingBookings || []).filter(b => Number(b.table_id) === Number(tableId));
-            
-            for (const slot of slots) {
-                const requestRange = convertSlotToRange(slot, null, durationHours);
-
-                const conflict = tableBookings.find(b => {
-                    const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
-                    return doSlotsOverlap(requestRange, existingRange);
-                });
-
-                if (conflict) {
-                    return res.status(409).json({ 
-                        error: `Table ${tableId} is already booked for time slot (${conflict.time_slot}) by ${conflict.user_name}. Clear or trim existing bookings first.` 
-                    });
-                }
-            }
-        }
-
-        // 2. RETRIEVE DEFAULT POOL TABLE PRICING
-        const { data: dbTables, error: tableError } = await supabase
-            .from('pool_tables')
-            .select('id, price');
-
-        if (tableError) throw tableError;
-
-        const tablePriceMap = {};
-        (dbTables || []).forEach(t => { tablePriceMap[t.id] = Number(t.price) || 60.00; });
-
-        const duration = Number(durationHours) || 1;
-        const insertRows = [];
-
-        // 3. BUILD INSERT PAYLOAD
-        tables.forEach(tableId => {
-            const numericTableId = Number(tableId);
-            const tableRate = tablePriceMap[numericTableId] || 60.00;
-            const isLeague = actionType === 'RESERVED';
-            
-            let calculatedPrice = 0.00;
-            if (isLeague || actionType === 'WALK_IN') {
-                calculatedPrice = tableRate * duration;
-            }
-
-            slots.forEach(slot => {
-                const refPrefix = actionType === 'WALK_IN' ? 'WALK' : (actionType === 'MAINTENANCE' ? 'MNT' : 'LEAGUE');
-                const refId = `${refPrefix}-${Math.floor(1000 + Math.random() * 9000)}`;
-                
-                let userName = 'LEAGUE RESERVATION';
-                if (actionType === 'WALK_IN') userName = 'WALK IN';
-                else if (actionType === 'MAINTENANCE') userName = 'SYSTEM MAINTENANCE';
-
-                insertRows.push({
-                    ref_id: refId,
-                    table_id: numericTableId,
-                    booking_date: date,
-                    time_slot: slot,
-                    user_name: userName,
-                    phone: 'N/A',
-                    booking_fee: 0.00,
-                    total_price: calculatedPrice,
-                    status: actionType,
-                    payment_status: actionType === 'WALK_IN' ? 'PAID' : (isLeague ? 'CONFIRMED' : 'NO_PAYMENT_REQUIRED'),
-                    payment_method: paymentMethod || null,
-                    user_identifier: 'ADMIN',
-                    is_active: true
-                });
-            });
-        });
-
-        // 4. EXECUTE INSERT
-        const { data, error } = await supabase.from('bookings').insert(insertRows).select();
-        if (error) throw error;
-
-        res.status(201).json({ success: true, count: data.length, records: data });
-    } catch (err) {
-        console.error('Supabase Action Error:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// 6. GET DAY BOOKINGS & DAILY FINANCIAL TOTALS FOR ADMIN
+// 2. GET DAY BOOKINGS & DAILY FINANCIAL TOTALS FOR ADMIN
 app.get('/api/admin/day-bookings', async (req, res) => {
     const { date } = req.query;
 
@@ -275,39 +78,151 @@ app.get('/api/admin/day-bookings', async (req, res) => {
 
     const mapped = (data || []).map(b => {
         const price = Number(b.total_price) || 0;
-
         if (b.payment_method === 'CASH') totalCash += price;
         if (b.payment_method === 'CARD') totalCard += price;
-
-        return {
-            ...b,
-            date: b.booking_date,
-            slot: b.time_slot
-        };
+        return { ...b, date: b.booking_date, slot: b.time_slot };
     });
 
     res.json({
         bookings: mapped,
-        summary: {
-            totalCash,
-            totalCard,
-            grandTotal: totalCash + totalCard
-        }
+        summary: { totalCash, totalCard, grandTotal: totalCash + totalCard }
     });
 });
 
-// HELPER: Calculates exact start/end date strings for YYYY-MM
-function getMonthDateRange(yearMonth) {
-    const [year, month] = yearMonth.split('-').map(Number);
-    const lastDay = new Date(year, month, 0).getDate();
-    
-    return {
-        startDate: `${yearMonth}-01`,
-        endDate: `${yearMonth}-${String(lastDay).padStart(2, '0')}`
-    };
-}
+// 3. ADMIN ACTION ITEMS (WALK-IN, MAINTENANCE, LEAGUE, & CLEAR)
+app.post('/api/admin/action-item', async (req, res) => {
+    const { actionType, paymentMethod, tables, slots, date, durationHours, startTimeOverride } = req.body;
 
-// 7. EXPORT MONTHLY BOOKINGS CSV
+    if (!tables || tables.length === 0) {
+        return res.status(400).json({ error: 'Tables are required.' });
+    }
+
+    try {
+        const tableIds = tables.map(Number);
+        
+        // Calculate Target Time Window
+        let computedSlot = slots ? slots[0] : null;
+        let requestRange = null;
+
+        if (actionType === 'CLEAR_TABLE') {
+            // Target specific slot if passed, or default to current hour block
+            const now = new Date();
+            const startMin = startTimeOverride ? parseTimeToMinutes(startTimeOverride) : (now.getHours() * 60 + now.getMinutes());
+            requestRange = { startMin, endMin: startMin + 60 }; // Target 1-hour slot window
+
+            const { data: existingBookings, error: fetchErr } = await supabase
+                .from('bookings')
+                .select('*')
+                .eq('booking_date', date)
+                .in('table_id', tableIds)
+                .eq('is_active', true);
+
+            if (fetchErr) throw fetchErr;
+
+            // Only clear bookings that overlap with this target time range
+            const bookingIdsToDeactivate = (existingBookings || [])
+                .filter(b => {
+                    const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
+                    return doSlotsOverlap(requestRange, existingRange);
+                })
+                .map(b => b.id);
+
+            if (bookingIdsToDeactivate.length > 0) {
+                const { error: clearErr } = await supabase
+                    .from('bookings')
+                    .update({ is_active: false })
+                    .in('id', bookingIdsToDeactivate);
+
+                if (clearErr) throw clearErr;
+            }
+
+            return res.json({ success: true, message: `Cleared target slot for table(s).` });
+        }
+
+        // Handle computed range for WALK_IN, MAINTENANCE, RESERVED
+        if (computedSlot) {
+            requestRange = convertSlotToRange(computedSlot, null, durationHours);
+        }
+
+        // Check for conflicting active bookings
+        const { data: existingBookings, error: fetchErr } = await supabase
+            .from('bookings')
+            .select('*')
+            .eq('booking_date', date)
+            .in('table_id', tableIds)
+            .eq('is_active', true);
+
+        if (fetchErr) throw fetchErr;
+
+        for (const tableId of tableIds) {
+            const tableBookings = (existingBookings || []).filter(b => Number(b.table_id) === Number(tableId));
+            const conflict = tableBookings.find(b => {
+                const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
+                return doSlotsOverlap(requestRange, existingRange);
+            });
+
+            if (conflict) {
+                return res.status(409).json({ 
+                    error: `Table ${tableId} is already booked for (${conflict.time_slot}) by ${conflict.user_name}. Clear the target slot first.` 
+                });
+            }
+        }
+
+        // Retrieve pricing table
+        const { data: dbTables, error: tableError } = await supabase.from('pool_tables').select('id, price');
+        if (tableError) throw tableError;
+
+        const tablePriceMap = {};
+        (dbTables || []).forEach(t => { tablePriceMap[t.id] = Number(t.price) || 60.00; });
+
+        const duration = Number(durationHours) || 1;
+        const insertRows = [];
+
+        tables.forEach(tableId => {
+            const numericTableId = Number(tableId);
+            const tableRate = tablePriceMap[numericTableId] || 60.00;
+            const isLeague = actionType === 'RESERVED';
+            
+            let calculatedPrice = 0.00;
+            if (isLeague || actionType === 'WALK_IN') {
+                calculatedPrice = tableRate * duration;
+            }
+
+            const refPrefix = actionType === 'WALK_IN' ? 'WALK' : (actionType === 'MAINTENANCE' ? 'MNT' : 'LEAGUE');
+            const refId = `${refPrefix}-${Math.floor(1000 + Math.random() * 9000)}`;
+            
+            let userName = 'LEAGUE RESERVATION';
+            if (actionType === 'WALK_IN') userName = 'WALK IN';
+            else if (actionType === 'MAINTENANCE') userName = 'SYSTEM MAINTENANCE';
+
+            insertRows.push({
+                ref_id: refId,
+                table_id: numericTableId,
+                booking_date: date,
+                time_slot: computedSlot,
+                user_name: userName,
+                phone: 'N/A',
+                booking_fee: 0.00,
+                total_price: calculatedPrice,
+                status: actionType,
+                payment_status: actionType === 'WALK_IN' ? 'PAID' : (isLeague ? 'CONFIRMED' : 'NO_PAYMENT_REQUIRED'),
+                payment_method: paymentMethod || null,
+                user_identifier: 'ADMIN',
+                is_active: true
+            });
+        });
+
+        const { data, error } = await supabase.from('bookings').insert(insertRows).select();
+        if (error) throw error;
+
+        res.status(201).json({ success: true, count: data.length, records: data });
+    } catch (err) {
+        console.error('Supabase Action Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 4. EXPORT MONTHLY CSV
 app.get('/api/admin/export-month-csv', async (req, res) => {
     const { month } = req.query;
     if (!month) return res.status(400).json({ error: 'Month parameter is required (YYYY-MM).' });
@@ -323,19 +238,12 @@ app.get('/api/admin/export-month-csv', async (req, res) => {
     if (error) return res.status(500).json({ error: error.message });
 
     const headers = ['Ref ID', 'Date', 'Time Slot', 'Table ID', 'User Name', 'Total Price', 'Payment Method', 'Payment Status', 'Status'];
-    
     const csvRows = [
         headers.join(','),
         ...(data || []).map(row => [
-            `"${row.ref_id || ''}"`,
-            `"${row.booking_date || ''}"`,
-            `"${row.time_slot || ''}"`,
-            `"${row.table_id || ''}"`,
-            `"${(row.user_name || '').replace(/"/g, '""')}"`,
-            `"${row.total_price || 0}"`,
-            `"${row.payment_method || ''}"`,
-            `"${row.payment_status || ''}"`,
-            `"${row.status || ''}"`
+            `"${row.ref_id || ''}"`, `"${row.booking_date || ''}"`, `"${row.time_slot || ''}"`,
+            `"${row.table_id || ''}"`, `"${(row.user_name || '').replace(/"/g, '""')}"`,
+            `"${row.total_price || 0}"`, `"${row.payment_method || ''}"`, `"${row.payment_status || ''}"`, `"${row.status || ''}"`
         ].join(','))
     ];
 
@@ -344,7 +252,7 @@ app.get('/api/admin/export-month-csv', async (req, res) => {
     return res.send(csvRows.join('\n'));
 });
 
-// 8. MONTHLY FINANCIAL SUMMARY CALCULATIONS
+// 5. MONTHLY SUMMARY
 app.get('/api/admin/month-summary', async (req, res) => {
     const { month } = req.query;
     if (!month) return res.status(400).json({ error: 'Month parameter is required (YYYY-MM).' });
@@ -360,21 +268,16 @@ app.get('/api/admin/month-summary', async (req, res) => {
 
     if (error) return res.status(500).json({ error: error.message });
 
-    let totalRevenue = 0;
-    let totalCash = 0;
-    let totalCard = 0;
+    let totalRevenue = 0, totalCash = 0, totalCard = 0;
     const days = {};
 
     (bookings || []).forEach(b => {
         const price = Number(b.total_price) || 0;
         totalRevenue += price;
-
         if (b.payment_method === 'CASH') totalCash += price;
         if (b.payment_method === 'CARD') totalCard += price;
 
-        if (!days[b.booking_date]) {
-            days[b.booking_date] = { total: 0, cash: 0, card: 0, count: 0 };
-        }
+        if (!days[b.booking_date]) days[b.booking_date] = { total: 0, cash: 0, card: 0, count: 0 };
         days[b.booking_date].total += price;
         if (b.payment_method === 'CASH') days[b.booking_date].cash += price;
         if (b.payment_method === 'CARD') days[b.booking_date].card += price;
