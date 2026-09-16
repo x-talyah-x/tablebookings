@@ -12,6 +12,8 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || 'sk_test_your_paystack_secret_key';
+
 // Helper: Parse standard time strings ("14:00", "02:00 PM") into minutes from midnight
 function parseTimeToMinutes(timeStr) {
     if (!timeStr) return 0;
@@ -85,7 +87,7 @@ app.get('/api/tables/available', async (req, res) => {
     const availableTables = (tables || []).filter(t => {
         const tableBookings = activeBookings.filter(b => Number(b.table_id) === Number(t.id));
         const hasConflict = tableBookings.some(b => {
-            const existingRange = convertSlotToRange(b.time_slot, null, null);
+            const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
             return doSlotsOverlap(targetRange, existingRange);
         });
         return !hasConflict;
@@ -131,7 +133,7 @@ app.get('/api/weekly-availability', async (req, res) => {
             const bookedTableIds = new Set();
 
             dayBookings.forEach(b => {
-                const bRange = convertSlotToRange(b.time_slot, null, null);
+                const bRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
                 if (doSlotsOverlap(slotRange, bRange)) {
                     bookedTableIds.add(Number(b.table_id));
                 }
@@ -147,7 +149,7 @@ app.get('/api/weekly-availability', async (req, res) => {
 
 // 4. MULTI-TABLE USER BOOKINGS
 app.post('/api/bookings/multi', async (req, res) => {
-    const { tableIds, date, startTime, durationHours, slot, userName, phone, userId, bookingFeePerTable, totalPrice } = req.body;
+    const { tableIds, date, startTime, durationHours, slot, userName, phone, userId, bookingFeePerTable } = req.body;
 
     if (!tableIds || !Array.isArray(tableIds) || tableIds.length === 0) {
         return res.status(400).json({ error: 'Please select at least one table.' });
@@ -155,7 +157,6 @@ app.post('/api/bookings/multi', async (req, res) => {
 
     const targetRange = convertSlotToRange(slot, startTime, durationHours);
 
-    // Verify availability for all requested tables
     const { data: activeBookings, error: fetchErr } = await supabase
         .from('bookings')
         .select('*')
@@ -168,7 +169,7 @@ app.post('/api/bookings/multi', async (req, res) => {
     for (const tableId of tableIds) {
         const conflict = (activeBookings || []).find(b => {
             if (Number(b.table_id) !== Number(tableId)) return false;
-            const existingRange = convertSlotToRange(b.time_slot, null, null);
+            const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
             return doSlotsOverlap(targetRange, existingRange);
         });
 
@@ -191,6 +192,8 @@ app.post('/api/bookings/multi', async (req, res) => {
             ref_id: `CUE-${Math.floor(100000 + Math.random() * 900000)}`,
             table_id: Number(tableId),
             booking_date: date,
+            start_time: startTime,
+            duration_hours: duration,
             time_slot: slot,
             user_name: userName,
             phone: phone,
@@ -246,7 +249,6 @@ app.post('/api/admin/action-item', async (req, res) => {
 
     try {
         const tableIds = tables.map(Number);
-        
         let computedSlot = slots ? slots[0] : null;
         let requestRange = null;
 
@@ -266,7 +268,7 @@ app.post('/api/admin/action-item', async (req, res) => {
 
             const bookingIdsToDeactivate = (existingBookings || [])
                 .filter(b => {
-                    const existingRange = convertSlotToRange(b.time_slot, null, null);
+                    const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
                     return doSlotsOverlap(requestRange, existingRange);
                 })
                 .map(b => b.id);
@@ -284,7 +286,7 @@ app.post('/api/admin/action-item', async (req, res) => {
         }
 
         if (computedSlot) {
-            requestRange = convertSlotToRange(computedSlot, null, durationHours);
+            requestRange = convertSlotToRange(computedSlot, startTimeOverride, durationHours);
         }
 
         const { data: existingBookings, error: fetchErr } = await supabase
@@ -299,7 +301,7 @@ app.post('/api/admin/action-item', async (req, res) => {
         for (const tableId of tableIds) {
             const tableBookings = (existingBookings || []).filter(b => Number(b.table_id) === Number(tableId));
             const conflict = tableBookings.find(b => {
-                const existingRange = convertSlotToRange(b.time_slot, null, null);
+                const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
                 return doSlotsOverlap(requestRange, existingRange);
             });
 
@@ -340,6 +342,8 @@ app.post('/api/admin/action-item', async (req, res) => {
                 ref_id: refId,
                 table_id: numericTableId,
                 booking_date: date,
+                start_time: startTimeOverride || null,
+                duration_hours: duration,
                 time_slot: computedSlot,
                 user_name: userName,
                 phone: 'N/A',
@@ -428,8 +432,6 @@ app.get('/api/admin/month-summary', async (req, res) => {
     res.json({ totalRevenue, totalCash, totalCard, days });
 });
 
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || 'sk_test_your_paystack_secret_key';
-
 // 9. INITIALIZE PAYSTACK TRANSACTION
 app.post('/api/bookings/initialize-payment', async (req, res) => {
     try {
@@ -441,7 +443,6 @@ app.post('/api/bookings/initialize-payment', async (req, res) => {
 
         const targetRange = convertSlotToRange(slot, startTime, durationHours);
 
-        // Verify real-time table availability against active bookings
         const { data: activeBookings, error: fetchErr } = await supabase
             .from('bookings')
             .select('*')
@@ -470,15 +471,7 @@ app.post('/api/bookings/initialize-payment', async (req, res) => {
             amount: amountInCents,
             currency: 'ZAR',
             callback_url: `${req.protocol}://${req.get('host')}/payment-success.html`,
-            metadata: {
-                tableIds,
-                date,
-                startTime,
-                durationHours,
-                slot,
-                userName,
-                phone
-            }
+            metadata: { tableIds, date, startTime, durationHours, slot, userName, phone }
         };
 
         const response = await fetch('https://api.paystack.co/transaction/initialize', {
@@ -527,7 +520,6 @@ app.post('/api/bookings/verify-payment', async (req, res) => {
         const meta = data.metadata;
         const { tableIds, date, startTime, durationHours, slot, userName, phone } = meta;
 
-        // Check if bookings for this transaction reference already exist
         const { data: existing } = await supabase
             .from('bookings')
             .select('id')
