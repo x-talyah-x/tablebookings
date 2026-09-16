@@ -53,7 +53,7 @@
         .zone-door { background: rgba(245, 158, 11, 0.2); border: 1px dashed #f59e0b; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between">
+<body class="min-h-screen flex flex-col bg-[#0b0f17]">
 
     <header class="border-b border-gray-800 bg-gray-950/80 backdrop-blur-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
@@ -65,101 +65,120 @@
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full space-y-8">
-        <!-- Controls & Time Selection -->
-        <div class="bg-gray-900/80 rounded-2xl p-4 border border-gray-800 flex flex-wrap gap-4 items-center justify-between">
-            <div class="flex flex-wrap gap-4 items-center">
-                <div>
-                    <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Booking Date</label>
-                    <input type="date" id="selected-date" class="bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
+    <div class="flex flex-1 max-w-7xl w-full mx-auto">
+        <!-- Left Side Navigation Sidebar -->
+        <aside class="w-64 border-r border-gray-800 p-4 shrink-0 bg-gray-950/40">
+            <nav class="space-y-2 sticky top-24">
+                <button id="nav-booking-tab" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-white bg-felt-600 transition-all">
+                    <i data-lucide="layout-grid" class="w-4 h-4"></i>
+                    <span>Create a Booking</span>
+                </button>
+                <button id="nav-grid-tab" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-gray-400 hover:text-white hover:bg-gray-900 transition-all">
+                    <i data-lucide="calendar" class="w-4 h-4"></i>
+                    <span>Weekly Availability Grid</span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 px-6 py-8 space-y-8 min-w-0">
+            
+            <!-- Controls & Time Selection Bar -->
+            <div class="bg-gray-900/80 rounded-2xl p-4 border border-gray-800 flex flex-wrap gap-4 items-center justify-between">
+                <div class="flex flex-wrap gap-4 items-center">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Booking Date</label>
+                        <input type="date" id="selected-date" class="bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Start Time</label>
+                        <input type="time" id="start-time" class="bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Duration</label>
+                        <select id="duration-hours" class="bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
+                            <option value="1">1 Hour</option>
+                            <option value="2">2 Hours</option>
+                            <option value="3">3 Hours</option>
+                            <option value="4">4 Hours</option>
+                            <option value="5">5 Hours</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end h-full pt-5">
+                        <button id="multi-book-btn" disabled class="px-4 py-2 bg-felt-600 hover:bg-felt-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-white font-bold text-sm transition-all">
+                            Book Selected Tables (<span id="selected-count">0</span>)
+                        </button>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Start Time</label>
-                    <input type="time" id="start-time" class="bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Duration</label>
-                    <select id="duration-hours" class="bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
-                        <option value="1">1 Hour</option>
-                        <option value="2">2 Hours</option>
-                        <option value="3">3 Hours</option>
-                        <option value="4">4 Hours</option>
-                        <option value="5">5 Hours</option>
-                    </select>
-                </div>
-                <div class="flex items-end h-full pt-5">
-                    <button id="multi-book-btn" disabled class="px-4 py-2 bg-felt-600 hover:bg-felt-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-white font-bold text-sm transition-all">
-                        Book Selected Tables (<span id="selected-count">0</span>)
-                    </button>
+                <div class="text-xs text-gray-400 bg-gray-950 px-3 py-2 rounded-xl border border-gray-800">
+                    Selected Slot: <span id="slot-preview" class="text-felt-400 font-semibold">--</span>
                 </div>
             </div>
-            <div class="text-xs text-gray-400 bg-gray-950 px-3 py-2 rounded-xl border border-gray-800">
-                Selected Slot: <span id="slot-preview" class="text-felt-400 font-semibold">--</span>
-            </div>
-        </div>
 
-        <!-- Weekly Slot Grid View -->
-        <section class="bg-gray-900/40 p-6 rounded-3xl border border-gray-800 space-y-4">
-            <div class="flex items-center justify-between">
-                <h3 class="text-md font-bold text-white flex items-center gap-2">
-                    <i data-lucide="calendar" class="w-4 h-4 text-felt-500"></i> Weekly Availability Grid
-                </h3>
-                <div class="flex gap-2">
-                    <button id="prev-week-btn" class="px-3 py-1 bg-gray-950 border border-gray-700 hover:bg-gray-800 text-xs text-white rounded-lg">← Prev Week</button>
-                    <button id="next-week-btn" class="px-3 py-1 bg-gray-950 border border-gray-700 hover:bg-gray-800 text-xs text-white rounded-lg">Next Week →</button>
-                </div>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-xs text-left text-gray-400 border-collapse">
-                    <thead class="text-xs uppercase bg-gray-950 text-gray-300">
-                        <tr id="weekly-grid-header">
-                            <th scope="col" class="px-3 py-2 border border-gray-800">Time / Date</th>
-                        </tr>
-                    </thead>
-                    <tbody id="weekly-grid-body">
-                    </tbody>
-                </table>
-            </div>
-        </section>
+            <!-- View 1: Create a Booking View (Table Formation Blueprint View) -->
+            <section id="view-booking" class="bg-gray-900/40 p-6 rounded-3xl border border-gray-800 overflow-x-auto">
+                <div class="floorplan-grid min-w-[950px]">
 
-        <!-- Floor Plan Blueprint Layout -->
-        <section id="user-view" class="bg-gray-900/40 p-6 rounded-3xl border border-gray-800 overflow-x-auto">
-            <div class="floorplan-grid min-w-[950px]">
+                    <!-- Row 1: Top Facilities (Stage & Restrooms) -->
+                    <div class="zone-restroom rounded-xl text-sky-400 font-semibold text-xs flex items-center justify-center col-start-2 row-start-1">
+                        Mens Restrooms
+                    </div>
+                    <div class="zone-stage rounded-xl text-amber-400 font-bold text-sm flex items-center justify-center col-span-2 col-start-3 row-start-1">
+                        STAGE
+                    </div>
+                    <div class="zone-restroom rounded-xl text-sky-400 font-semibold text-xs flex items-center justify-center col-start-5 row-start-1">
+                        Ladies Restrooms
+                    </div>
 
-                <!-- Row 1: Top Facilities (Stage & Restrooms) -->
-                <div class="zone-restroom rounded-xl text-sky-400 font-semibold text-xs flex items-center justify-center col-start-2 row-start-1">
-                    Mens Restrooms
-                </div>
-                <div class="zone-stage rounded-xl text-amber-400 font-bold text-sm flex items-center justify-center col-span-2 col-start-3 row-start-1">
-                    STAGE
-                </div>
-                <div class="zone-restroom rounded-xl text-sky-400 font-semibold text-xs flex items-center justify-center col-start-5 row-start-1">
-                    Ladies Restrooms
-                </div>
+                    <!-- Column 1: Heyball + Nineball Section (Spans Rows 2 through 7) -->
+                    <div class="zone-heyball rounded-2xl p-4 text-emerald-400 font-bold text-xs flex flex-col justify-center items-center text-center col-start-1 row-start-2 row-span-6">
+                        <span>Heyball + Nineball section</span>
+                    </div>
 
-                <!-- Column 1: Heyball + Nineball Section (Spans Rows 2 through 7) -->
-                <div class="zone-heyball rounded-2xl p-4 text-emerald-400 font-bold text-xs flex flex-col justify-center items-center text-center col-start-1 row-start-2 row-span-6">
-                    <span>Heyball + Nineball section</span>
-                </div>
+                    <!-- Dynamic Table Slots Placeholder -->
+                    <div id="table-node-container" class="contents"></div>
 
-                <!-- Dynamic Table Slots Placeholder -->
-                <div id="table-node-container" class="contents"></div>
+                    <!-- Row 4-5: Outside Exit Doors -->
+                    <div class="zone-door rounded-xl p-2 text-amber-300 font-semibold text-xs flex items-center justify-center text-center col-start-6 row-start-4 row-span-2">
+                        Doors to the outside
+                    </div>
 
-                <!-- Row 4-5: Outside Exit Doors -->
-                <div class="zone-door rounded-xl p-2 text-amber-300 font-semibold text-xs flex items-center justify-center text-center col-start-6 row-start-4 row-span-2">
-                    Doors to the outside
+                    <!-- Row 8: Bottom Entrance & Counter Area -->
+                    <div class="zone-counter rounded-xl text-amber-400 font-bold text-xs flex items-center justify-center col-start-3 row-start-8">
+                        Entrance
+                    </div>
+                    <div class="zone-counter rounded-xl text-amber-400 font-bold text-xs flex items-center justify-center col-span-2 col-start-4 row-start-8">
+                        Counter
+                    </div>
                 </div>
+            </section>
 
-                <!-- Row 8: Bottom Entrance & Counter Area -->
-                <div class="zone-counter rounded-xl text-amber-400 font-bold text-xs flex items-center justify-center col-start-3 row-start-8">
-                    Entrance
+            <!-- View 2: Weekly Availability Grid View -->
+            <section id="view-weekly-grid" class="bg-gray-900/40 p-6 rounded-3xl border border-gray-800 space-y-4 hidden">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-md font-bold text-white flex items-center gap-2">
+                        <i data-lucide="calendar" class="w-4 h-4 text-felt-500"></i> Weekly Availability Grid
+                    </h3>
+                    <div class="flex gap-2">
+                        <button id="prev-week-btn" class="px-3 py-1 bg-gray-950 border border-gray-700 hover:bg-gray-800 text-xs text-white rounded-lg">← Prev Week</button>
+                        <button id="next-week-btn" class="px-3 py-1 bg-gray-950 border border-gray-700 hover:bg-gray-800 text-xs text-white rounded-lg">Next Week →</button>
+                    </div>
                 </div>
-                <div class="zone-counter rounded-xl text-amber-400 font-bold text-xs flex items-center justify-center col-span-2 col-start-4 row-start-8">
-                    Counter
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left text-gray-400 border-collapse">
+                        <thead class="text-xs uppercase bg-gray-950 text-gray-300">
+                            <tr id="weekly-grid-header">
+                                <th scope="col" class="px-3 py-2 border border-gray-800">Time / Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="weekly-grid-body">
+                        </tbody>
+                    </table>
                 </div>
-            </div>
-        </section>
-    </main>
+            </section>
+
+        </main>
+    </div>
 
     <!-- Modal: New Booking -->
     <div id="booking-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
@@ -248,10 +267,33 @@
             document.getElementById('prev-week-btn').addEventListener('click', () => changeWeek(-7));
             document.getElementById('next-week-btn').addEventListener('click', () => changeWeek(7));
 
+            // Navigation Handlers
+            document.getElementById('nav-booking-tab').addEventListener('click', () => switchTab('booking'));
+            document.getElementById('nav-grid-tab').addEventListener('click', () => switchTab('grid'));
+
             updateSlotPreview();
             loadData();
             renderWeeklyGrid();
         });
+
+        function switchTab(tab) {
+            const bookingView = document.getElementById('view-booking');
+            const gridView = document.getElementById('view-weekly-grid');
+            const bookingBtn = document.getElementById('nav-booking-tab');
+            const gridBtn = document.getElementById('nav-grid-tab');
+
+            if (tab === 'booking') {
+                bookingView.classList.remove('hidden');
+                gridView.classList.add('hidden');
+                bookingBtn.className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-white bg-felt-600 transition-all";
+                gridBtn.className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-gray-400 hover:text-white hover:bg-gray-900 transition-all";
+            } else {
+                bookingView.classList.add('hidden');
+                gridView.classList.remove('hidden');
+                gridBtn.className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-white bg-felt-600 transition-all";
+                bookingBtn.className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-gray-400 hover:text-white hover:bg-gray-900 transition-all";
+            }
+        }
 
         function changeWeek(days) {
             appState.weekStartDate.setDate(appState.weekStartDate.getDate() + days);
@@ -367,6 +409,7 @@
             appState.startTime = timeStr;
             document.getElementById('selected-date').value = dateStr;
             document.getElementById('start-time').value = timeStr;
+            switchTab('booking');
             onFilterChange();
         }
 
