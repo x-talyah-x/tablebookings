@@ -14,7 +14,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || 'sk_test_your_paystack_secret_key';
 
-// Helper: Parse standard time strings ("14:00", "02:00 PM") into minutes from midnight
+// Helper: Parse standard time strings ("14:00", "02:00 PM", "11:00 PM") into minutes from midnight
 function parseTimeToMinutes(timeStr) {
     if (!timeStr) return 0;
     const cleanStr = timeStr.trim();
@@ -33,7 +33,7 @@ function parseTimeToMinutes(timeStr) {
 function convertSlotToRange(slot, startTime, durationHours) {
     if (startTime && durationHours) {
         const startMin = parseTimeToMinutes(startTime);
-        return { startMin, endMin: startMin + (parseInt(durationHours) * 60) };
+        return { startMin, endMin: startMin + (parseFloat(durationHours) * 60) };
     }
     if (slot && slot.includes('-')) {
         const [startStr, endStr] = slot.split('-').map(s => s.trim());
@@ -252,6 +252,24 @@ app.post('/api/admin/action-item', async (req, res) => {
         let computedSlot = slots ? slots[0] : null;
         let requestRange = null;
 
+        let effectiveDuration = Number(durationHours) || 1;
+        let effectiveStartTime = startTimeOverride;
+
+        if (actionType === 'MAINTENANCE') {
+            const now = new Date();
+            const startMin = startTimeOverride 
+                ? parseTimeToMinutes(startTimeOverride) 
+                : (now.getHours() * 60 + now.getMinutes());
+            
+            const closingMin = 23 * 60;
+            const remainingMinutes = Math.max(60, closingMin - startMin);
+            effectiveDuration = remainingMinutes / 60;
+            
+            if (!effectiveStartTime) {
+                effectiveStartTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            }
+        }
+
         if (actionType === 'CLEAR_TABLE') {
             const now = new Date();
             const startMin = startTimeOverride ? parseTimeToMinutes(startTimeOverride) : (now.getHours() * 60 + now.getMinutes());
@@ -286,7 +304,7 @@ app.post('/api/admin/action-item', async (req, res) => {
         }
 
         if (computedSlot) {
-            requestRange = convertSlotToRange(computedSlot, startTimeOverride, durationHours);
+            requestRange = convertSlotToRange(computedSlot, effectiveStartTime, effectiveDuration);
         }
 
         const { data: existingBookings, error: fetchErr } = await supabase
@@ -318,7 +336,6 @@ app.post('/api/admin/action-item', async (req, res) => {
         const tablePriceMap = {};
         (dbTables || []).forEach(t => { tablePriceMap[t.id] = Number(t.price) || 60.00; });
 
-        const duration = Number(durationHours) || 1;
         const insertRows = [];
 
         tables.forEach(tableId => {
@@ -328,7 +345,7 @@ app.post('/api/admin/action-item', async (req, res) => {
             
             let calculatedPrice = 0.00;
             if (isLeague || actionType === 'WALK_IN') {
-                calculatedPrice = tableRate * duration;
+                calculatedPrice = tableRate * effectiveDuration;
             }
 
             const refPrefix = actionType === 'WALK_IN' ? 'WALK' : (actionType === 'MAINTENANCE' ? 'MNT' : 'LEAGUE');
@@ -342,8 +359,8 @@ app.post('/api/admin/action-item', async (req, res) => {
                 ref_id: refId,
                 table_id: numericTableId,
                 booking_date: date,
-                start_time: startTimeOverride || null,
-                duration_hours: duration,
+                start_time: effectiveStartTime || null,
+                duration_hours: effectiveDuration,
                 time_slot: computedSlot,
                 user_name: userName,
                 phone: 'N/A',
