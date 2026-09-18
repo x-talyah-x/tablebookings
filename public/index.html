@@ -89,8 +89,20 @@
                         <input type="date" id="selected-date" class="bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Start Time</label>
-                        <input type="time" id="start-time" class="bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Start Time (Hourly)</label>
+                        <select id="start-time" class="bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
+                            <option value="11:00">11:00 AM</option>
+                            <option value="12:00">12:00 PM</option>
+                            <option value="13:00">01:00 PM</option>
+                            <option value="14:00" selected>02:00 PM</option>
+                            <option value="15:00">03:00 PM</option>
+                            <option value="16:00">04:00 PM</option>
+                            <option value="17:00">05:00 PM</option>
+                            <option value="18:00">06:00 PM</option>
+                            <option value="19:00">07:00 PM</option>
+                            <option value="20:00">08:00 PM</option>
+                            <option value="21:00">09:00 PM</option>
+                        </select>
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Duration</label>
@@ -158,7 +170,7 @@
     <!-- Modal: Online Checkout -->
     <div id="booking-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6">
-            <h3 class="text-lg font-bold text-white mb-2">Reserve Table(s) <span id="modal-table-num"></span></h3>
+            <h3 class="text-lg font-bold text-white mb-2">Reserve Table(s): <span id="modal-table-num" class="text-felt-400"></span></h3>
             <div class="bg-gray-950 border border-gray-800 rounded-xl p-3 mb-4 text-xs space-y-1">
                 <div class="flex justify-between text-gray-400"><span>Time Slot:</span> <span id="modal-time-slot" class="text-white font-medium">--</span></div>
                 <div class="flex justify-between text-gray-400"><span>Duration:</span> <span id="modal-duration" class="text-white font-medium">--</span></div>
@@ -398,7 +410,7 @@
                 const tableData = appState.tables.find(t => t.id === num || t.number === num);
                 const isAvailable = Boolean(tableData);
                 const isSelected = appState.selectedTables.some(t => t.id === num);
-                const price = tableData ? (tableData.hourly_rate || tableData.price || 50) : 50;
+                const price = tableData ? (tableData.price || 50) : 50;
 
                 const wrapper = document.createElement('div');
                 wrapper.className = "table-slot-container flex items-center justify-center";
@@ -416,7 +428,7 @@
                 tableCard.innerHTML = `
                     <div class="billiard-table-cloth w-full h-full rounded-lg flex flex-col items-center justify-center text-white relative p-1 text-center">
                         <span class="text-sm font-bold leading-none">${num}</span>
-                        <span class="text-[10px] text-emerald-200 mt-1 leading-none font-medium">R${price}</span>
+                        <span class="text-[10px] text-emerald-200 mt-1 leading-none font-medium">R${price}/hr</span>
                         ${!isAvailable ? '<span class="text-[9px] bg-red-950/90 text-red-400 px-1 py-0.5 rounded-md absolute font-semibold">Booked</span>' : ''}
                         ${isSelected ? '<span class="text-[9px] bg-felt-500 text-black px-1 py-0.5 rounded-md absolute top-0 right-0 font-bold">✓</span>' : ''}
                     </div>
@@ -452,7 +464,7 @@
             const subtotal = appState.selectedTables.reduce((acc, t) => acc + (t.price * duration), 0);
             const totalPrice = subtotal + bookingFee;
             const timeSlotStr = getFormattedSlot();
-            const tableListStr = appState.selectedTables.map(t => t.id).join(', ');
+            const tableListStr = appState.selectedTables.map(t => `#${t.id}`).join(', ');
 
             document.getElementById('form-total-price').value = totalPrice;
             document.getElementById('modal-table-num').innerText = tableListStr;
