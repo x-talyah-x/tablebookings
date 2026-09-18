@@ -12,8 +12,6 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || 'sk_test_your_paystack_secret_key';
-
 // Parse standard 24h or 12h time strings into total minutes from midnight
 function parseTimeToMinutes(timeStr) {
     if (!timeStr) return 0;
@@ -195,8 +193,8 @@ app.post('/api/bookings/multi', async (req, res) => {
             user_identifier: userId,
             booking_fee: fee,
             total_price: subtotal + fee,
-            status: 'PENDING',
-            payment_status: 'PENDING',
+            status: 'CONFIRMED',
+            payment_status: 'DIRECT',
             is_active: true
         };
     });
@@ -205,73 +203,6 @@ app.post('/api/bookings/multi', async (req, res) => {
     if (error) return res.status(500).json({ error: error.message });
 
     res.status(201).json({ success: true, count: data.length, bookings: data });
-});
-
-// INITIALIZE PAYSTACK TRANSACTION FOR MULTI-TABLE BOOKING
-app.post('/api/bookings/initialize-payment', async (req, res) => {
-    try {
-        const { tableIds, date, startTime, durationHours, slot, userName, email, phone, totalPrice } = req.body;
-
-        if (!tableIds || !Array.isArray(tableIds) || tableIds.length === 0) {
-            return res.status(400).json({ error: 'Please select at least one table.' });
-        }
-
-        const targetRange = convertSlotToRange(slot, startTime, durationHours);
-
-        const { data: activeBookings, error: fetchErr } = await supabase
-            .from('bookings')
-            .select('*')
-            .eq('booking_date', date)
-            .in('table_id', tableIds)
-            .eq('is_active', true);
-
-        if (fetchErr) return res.status(500).json({ error: fetchErr.message });
-
-        for (const tableId of tableIds) {
-            const conflict = (activeBookings || []).find(b => {
-                if (Number(b.table_id) !== Number(tableId)) return false;
-                const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
-                return doSlotsOverlap(targetRange, existingRange);
-            });
-
-            if (conflict) {
-                return res.status(409).json({ error: `Table ${tableId} is no longer available for the selected slot.` });
-            }
-        }
-
-        const amountInCents = Math.round(parseFloat(totalPrice) * 100);
-
-        const paystackPayload = {
-            email: email || `${phone.replace(/\D/g, '')}@cuecraft.com`,
-            amount: amountInCents,
-            currency: 'ZAR',
-            callback_url: `${req.protocol}://${req.get('host')}/payment-success.html`,
-            metadata: { tableIds, date, startTime, durationHours, slot, userName, phone }
-        };
-
-        const response = await fetch('https://api.paystack.co/transaction/initialize', {
-            method: 'POST',
-            headers: {
-                Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(paystackPayload)
-        });
-
-        const paystackData = await response.json();
-
-        if (!paystackData.status) {
-            return res.status(400).json({ error: paystackData.message || 'Payment initialization failed.' });
-        }
-
-        res.json({
-            authorization_url: paystackData.data.authorization_url,
-            reference: paystackData.data.reference
-        });
-    } catch (err) {
-        console.error('Paystack initialization error:', err);
-        res.status(500).json({ error: 'Internal server error while initializing payment.' });
-    }
 });
 
 // ==========================================
@@ -291,7 +222,7 @@ app.get('/api/admin/bookings', async (req, res) => {
     res.json(data || []);
 });
 
-// ADMIN OVERRIDE CREATE BOOKING (BYPASSES PAYMENT / MANUAL ENTRY)
+// ADMIN OVERRIDE CREATE BOOKING (MANUAL ENTRY)
 app.post('/api/admin/bookings', async (req, res) => {
     const { table_id, booking_date, start_time, duration_hours, time_slot, user_name, phone, status, notes } = req.body;
 
