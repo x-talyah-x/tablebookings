@@ -49,6 +49,13 @@ function doSlotsOverlap(rangeA, rangeB) {
     return Math.max(rangeA.startMin, rangeB.startMin) < Math.min(rangeA.endMin, rangeB.endMin);
 }
 
+// Helper to escape CSV values
+function escapeCSV(val) {
+    if (val === null || val === undefined) return '""';
+    const str = String(val).replace(/"/g, '""');
+    return `"${str}"`;
+}
+
 // ==========================================
 // PUBLIC & CLIENT API ROUTES
 // ==========================================
@@ -206,8 +213,250 @@ app.post('/api/bookings/multi', async (req, res) => {
 });
 
 // ==========================================
-// RESTORED ADMIN API ROUTES
+// ADMIN DASHBOARD API ROUTES
 // ==========================================
+
+// GET DAY BOOKINGS & DAILY PAYMENT SUMMARY
+app.get('/api/admin/day-bookings', async (req, res) => {
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ error: 'Date parameter required (YYYY-MM-DD)' });
+
+    const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('booking_date', date)
+        .order('created_at', { ascending: false });
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    const bookings = data || [];
+    let totalCash = 0;
+    let totalCard = 0;
+
+    bookings.forEach(b => {
+        if (b.is_active !== false) {
+            const price = Number(b.total_price) || 0;
+            if (b.payment_method === 'CASH') totalCash += price;
+            if (b.payment_method === 'CARD') totalCard += price;
+        }
+    });
+
+    res.json({
+        bookings,
+        summary: { totalCash, totalCard }
+    });
+});
+
+// EXECUTE ADMIN ACTION ITEM (WALK_IN, MAINTENANCE, RESERVED, CLEAR_TABLE)
+app.post('/api/admin/action-item', async (req, res) => {
+    const { actionType, tables, slots, date, durationHours, startTimeOverride, paymentMethod, price } = req.body;
+
+    if (!tables || !Array.isArray(tables) || tables.length === 0) {
+        return res.status(400).json({ error: 'At least one table must be selected.' });
+    }
+
+    const slotStr = (slots && slots[0]) ? slots[0] : '';
+    const targetRange = convertSlotToRange(slotStr, startTimeOverride, durationHours);
+
+    // 1. Handle CLEAR_TABLE Action
+    if (actionType === 'CLEAR_TABLE') {
+        const { data: activeBookings, error: fetchErr } = await supabase
+            .from('bookings')
+            .select('*')
+            .eq('booking_date', date)
+            .in('table_id', tables)
+            .eq('is_active', true);
+
+        if (fetchErr) return res.status(500).json({ error: fetchErr.message });
+
+        const idsToClear = [];
+        (activeBookings || []).forEach(b => {
+            const bRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
+            if (doSlotsOverlap(targetRange, bRange)) {
+                idsToClear.push(b.id);
+            }
+        });
+
+        if (idsToClear.length > 0) {
+            const { error: updateErr } = await supabase
+                .from('bookings')
+                .update({ is_active: false, status: 'CANCELLED' })
+                .in('id', idsToClear);
+
+            if (updateErr) return res.status(500).json({ error: updateErr.message });
+        }
+
+        return res.json({ success: true, clearedCount: idsToClear.length });
+    }
+
+    // 2. Conflict checking for creation actions
+    const { data: activeBookings, error: fetchErr } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('booking_date', date)
+        .in('table_id', tables)
+        .eq('is_active', true);
+
+    if (fetchErr) return res.status(500).json({ error: fetchErr.message });
+
+    for (const tableId of tables) {
+        const conflict = (activeBookings || []).find(b => {
+            if (Number(b.table_id) !== Number(tableId)) return false;
+            const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
+            return doSlotsOverlap(targetRange, existingRange);
+        });
+
+        if (conflict) {
+            return res.status(409).json({ error: `Table ${tableId} is already occupied in this target slot.` });
+        }
+    }
+
+    // 3. Fetch current table prices
+    const { data: dbTables } = await supabase.from('pool_tables').select('id, price');
+    const priceMap = {};
+    (dbTables || []).forEach(t => priceMap[t.id] = Number(t.price) || 60);
+
+    const duration = Number(durationHours) || 1;
+
+    let userName = 'Walk-In Customer';
+    let status = 'WALK_IN';
+    let pMethod = paymentMethod || null;
+
+    if (actionType === 'MAINTENANCE') {
+        userName = 'Maintenance Mode';
+        status = 'MAINTENANCE';
+        pMethod = null;
+    } else if (actionType === 'RESERVED') {
+        userName = 'League / Reserved';
+        status = 'RESERVED';
+        pMethod = null;
+    }
+
+    const rows = tables.map(tableId => {
+        const tableRate = priceMap[tableId] || 60;
+        let calculatedPrice = 0;
+        
+        if (actionType === 'WALK_IN') {
+            calculatedPrice = price ? (price / tables.length) : (tableRate * duration);
+        }
+
+        return {
+            ref_id: `${actionType.substring(0, 3)}-${Math.floor(100000 + Math.random() * 900000)}`,
+            table_id: Number(tableId),
+            booking_date: date,
+            start_time: startTimeOverride,
+            duration_hours: duration,
+            time_slot: slotStr,
+            user_name: userName,
+            status: status,
+            payment_method: pMethod,
+            total_price: calculatedPrice,
+            is_active: true
+        };
+    });
+
+    const { data, error } = await supabase.from('bookings').insert(rows).select();
+    if (error) return res.status(500).json({ error: error.message });
+
+    res.status(201).json({ success: true, count: data.length, bookings: data });
+});
+
+// MONTHLY SUMMARY AGGREGATION
+app.get('/api/admin/month-summary', async (req, res) => {
+    const { month } = req.query; // YYYY-MM
+    if (!month) return res.status(400).json({ error: 'Month parameter required (YYYY-MM)' });
+
+    const startDate = `${month}-01`;
+    const [year, monthNum] = month.split('-').map(Number);
+    const daysInMonth = new Date(year, monthNum, 0).getDate();
+    const endDate = `${month}-${String(daysInMonth).padStart(2, '0')}`;
+
+    const { data: bookings, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .gte('booking_date', startDate)
+        .lte('booking_date', endDate)
+        .eq('is_active', true);
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    let totalRevenue = 0;
+    let totalCash = 0;
+    let totalCard = 0;
+    const days = {};
+
+    (bookings || []).forEach(b => {
+        const amt = Number(b.total_price) || 0;
+        const dKey = b.booking_date;
+
+        if (!days[dKey]) {
+            days[dKey] = { total: 0, cash: 0, card: 0, count: 0 };
+        }
+
+        days[dKey].total += amt;
+        days[dKey].count += 1;
+        totalRevenue += amt;
+
+        if (b.payment_method === 'CASH') {
+            days[dKey].cash += amt;
+            totalCash += amt;
+        } else if (b.payment_method === 'CARD') {
+            days[dKey].card += amt;
+            totalCard += amt;
+        }
+    });
+
+    res.json({
+        month,
+        totalRevenue,
+        totalCash,
+        totalCard,
+        days
+    });
+});
+
+// EXPORT MONTHLY BOOKINGS TO CSV
+app.get('/api/admin/export-month-csv', async (req, res) => {
+    const { month } = req.query; // YYYY-MM
+    if (!month) return res.status(400).send('Month parameter required (YYYY-MM)');
+
+    const startDate = `${month}-01`;
+    const [year, monthNum] = month.split('-').map(Number);
+    const daysInMonth = new Date(year, monthNum, 0).getDate();
+    const endDate = `${month}-${String(daysInMonth).padStart(2, '0')}`;
+
+    const { data: bookings, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .gte('booking_date', startDate)
+        .lte('booking_date', endDate)
+        .order('booking_date', { ascending: true });
+
+    if (error) return res.status(500).send(error.message);
+
+    const headers = ['Ref ID', 'Date', 'Time Slot', 'Table ID', 'User Name', 'Phone', 'Status', 'Payment Method', 'Total Price', 'Is Active'];
+    const csvRows = [headers.join(',')];
+
+    (bookings || []).forEach(b => {
+        const row = [
+            escapeCSV(b.ref_id),
+            escapeCSV(b.booking_date),
+            escapeCSV(b.time_slot),
+            escapeCSV(b.table_id),
+            escapeCSV(b.user_name),
+            escapeCSV(b.phone),
+            escapeCSV(b.status),
+            escapeCSV(b.payment_method),
+            escapeCSV(b.total_price),
+            escapeCSV(b.is_active)
+        ];
+        csvRows.push(row.join(','));
+    });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="bookings-${month}.csv"`);
+    res.status(200).send(csvRows.join('\n'));
+});
 
 // GET ALL BOOKINGS (ADMIN OVERVIEW)
 app.get('/api/admin/bookings', async (req, res) => {
@@ -228,7 +477,6 @@ app.post('/api/admin/bookings', async (req, res) => {
 
     const targetRange = convertSlotToRange(time_slot, start_time, duration_hours);
 
-    // Check for existing active bookings on this table
     const { data: activeBookings } = await supabase
         .from('bookings')
         .select('*')
