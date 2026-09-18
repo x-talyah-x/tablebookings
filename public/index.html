@@ -18,8 +18,6 @@
         }
     </script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Paystack Inline JS SDK -->
-    <script src="https://js.paystack.co/v1/inline.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Outfit', sans-serif; background-color: #0b0f17; color: #f3f4f6; }
@@ -167,7 +165,7 @@
         </main>
     </div>
 
-    <!-- Modal: Online Checkout -->
+    <!-- Modal: Direct Checkout Confirmation -->
     <div id="booking-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6">
             <h3 class="text-lg font-bold text-white mb-2">Reserve Table(s): <span id="modal-table-num" class="text-felt-400"></span></h3>
@@ -181,13 +179,12 @@
             <form id="booking-form" class="space-y-4">
                 <input type="hidden" id="form-total-price">
                 <input type="text" id="form-user-name" required placeholder="Your Full Name" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
-                <input type="email" id="form-user-email" required placeholder="Email Address" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
                 <input type="tel" id="form-user-phone" required placeholder="Phone Number" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
 
                 <div class="flex gap-2 pt-2">
                     <button type="button" id="cancel-booking-btn" class="w-1/2 py-2 border border-gray-700 rounded-xl text-gray-300 hover:bg-gray-800">Cancel</button>
-                    <button type="submit" id="pay-now-btn" class="w-1/2 py-2 bg-felt-600 hover:bg-felt-500 rounded-xl text-white font-bold flex justify-center items-center gap-1">
-                        <span>Pay Now</span>
+                    <button type="submit" id="confirm-booking-btn" class="w-1/2 py-2 bg-felt-600 hover:bg-felt-500 rounded-xl text-white font-bold flex justify-center items-center gap-1">
+                        <span>Confirm Reservation</span>
                     </button>
                 </div>
             </form>
@@ -486,23 +483,23 @@
                 durationHours: appState.durationHours,
                 slot: getFormattedSlot(),
                 userName: document.getElementById('form-user-name').value,
-                email: document.getElementById('form-user-email').value,
                 phone: document.getElementById('form-user-phone').value,
-                totalPrice: document.getElementById('form-total-price').value
+                userId: userId
             };
 
-            const res = await fetch('/api/bookings/initialize-payment', {
+            const res = await fetch('/api/bookings/multi', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
             if (res.ok) {
-                const { authorization_url } = await res.json();
-                window.location.href = authorization_url;
+                alert('Reservation successfully created!');
+                closeBookingModal();
+                onFilterChange();
             } else {
                 const data = await res.json();
-                alert(data.error || 'Payment initialization failed.');
+                alert(data.error || 'Failed to complete booking.');
             }
         }
 
