@@ -63,42 +63,17 @@
 
         .step-dot { width: 22px; height: 22px; border-radius: 999px; display:flex; align-items:center; justify-content:center; background:#111827; border:1px solid #374151; color:#6b7280; font-weight:700; font-size:10px; }
         .step-dot.active { background:#059669; border-color:#10b981; color:#fff; }
-        
-        /* Mobile Date Selector Pills */
-        .date-card { 
-            min-width: 72px; 
-            padding: 10px 8px; 
-            border-radius: 16px; 
-            border: 1px solid #1f2937; 
-            background: #030712; 
-            text-align: center; 
-            color: #9ca3af; 
-            transition: all 0.2s ease;
-            flex-shrink: 0;
-        }
-        .date-card.active { 
-            background: linear-gradient(135deg, #065f46 0%, #047857 100%); 
-            border-color: #10b981; 
-            color: #fff; 
-            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
-            transform: scale(1.03);
-        }
-        .date-card .date-number { font-size: 18px; font-weight: 800; color: #fff; margin-top: 1px; }
-        .date-card:not(.active) .date-number { color: #e5e7eb; }
-        
+
         .availability-key { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
         .available-key { background: #10b981; }
         .booked-key { background: #ef4444; }
 
-        /* Custom Time Picker Styling */
+        /* Custom Date and Time Inputs Styling */
+        input[type="date"]::-webkit-calendar-picker-indicator,
         input[type="time"]::-webkit-calendar-picker-indicator {
             filter: invert(1);
             cursor: pointer;
         }
-
-        /* Hide scrollbar for seamless touch-drag date strip */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col bg-[#0b0f17] pb-24 md:pb-0">
@@ -143,39 +118,34 @@
                 </div>
                 <div class="hidden sm:flex items-center gap-2 text-[10px] text-gray-400 bg-gray-950 border border-gray-800 rounded-xl px-3 py-2">
                     <i data-lucide="clock" class="w-3.5 h-3.5 text-felt-500"></i>
-                   Operating Hours: 11am to 2am
+                    Custom Date & Time
                 </div>
             </div>
 
-            <!-- Mobile-First Modern Date Selector -->
-            <div class="mb-5">
-                <div class="flex items-center justify-between mb-2.5">
-                    <label class="block text-[10px] uppercase font-bold text-gray-400 tracking-wider">Select Date</label>
-                    <div class="relative flex items-center">
-                        <!-- Custom Date Picker Trigger Pill -->
-                        <label for="custom-date-picker" class="flex items-center gap-1.5 text-xs text-felt-400 font-semibold bg-felt-950/80 border border-felt-800/80 rounded-xl px-2.5 py-1.5 cursor-pointer hover:bg-felt-900 transition-colors">
-                            <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
-                            <span id="display-date-label">More Dates</span>
-                            <i data-lucide="chevron-down" class="w-3 h-3 text-felt-500"></i>
-                        </label>
-                        <input type="date" id="custom-date-picker" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer">
+            <!-- Mobile-Optimized Date, Time, and Duration Picker Controls -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <!-- Clean, Dedicated Date Picker -->
+                <div>
+                    <label class="block text-[10px] uppercase font-bold text-gray-400 mb-2 tracking-wider">Select Date</label>
+                    <div class="relative">
+                        <input type="date" id="selected-date" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm font-semibold text-white focus:outline-none focus:border-felt-500">
                     </div>
                 </div>
-            </div>
 
-            <!-- Custom Start Time & Duration -->
-            <div class="grid grid-cols-2 gap-3">
+                <!-- Custom Start Time -->
                 <div>
                     <label class="block text-[10px] uppercase font-bold text-gray-400 mb-2 tracking-wider">Custom Start Time</label>
                     <div class="relative">
                         <input type="time" id="start-time" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm font-semibold text-white focus:outline-none focus:border-felt-500">
                     </div>
                 </div>
+
+                <!-- Duration -->
                 <div>
                     <label class="block text-[10px] uppercase font-bold text-gray-400 mb-2 tracking-wider">Duration (1-Hr Block Slots)</label>
                     <select id="duration-hours" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm font-semibold text-white focus:outline-none focus:border-felt-500">
                         <option value="1" selected>1 Hour Slot</option>
-                        <option value="2">2 Hour Slots</option>
+                        <option value="2" >2 Hour Slots</option>
                         <option value="3">3 Hour Slots</option>
                         <option value="4">4 Hour Slots</option>
                         <option value="5">5 Hour Slots</option>
@@ -353,15 +323,11 @@
         window.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
 
-            document.getElementById('custom-date-picker').value = appState.selectedDate;
+            document.getElementById('selected-date').value = appState.selectedDate;
             document.getElementById('start-time').value = appState.startTime;
             document.getElementById('duration-hours').value = appState.durationHours;
 
-            document.getElementById('custom-date-picker').addEventListener('change', (e) => {
-                appState.selectedDate = e.target.value;
-                onFilterChange();
-            });
-
+            document.getElementById('selected-date').addEventListener('change', onFilterChange);
             document.getElementById('start-time').addEventListener('change', onFilterChange);
             document.getElementById('duration-hours').addEventListener('change', onFilterChange);
             
@@ -370,7 +336,6 @@
             document.getElementById('mobile-multi-book-btn').addEventListener('click', openMultiBookingModal);
             document.getElementById('clear-selection-btn').addEventListener('click', clearSelection);
             
-            renderDateStrip();
             updateSlotPreview();
             updateSelectionUI();
             loadData();
@@ -407,40 +372,6 @@
             const durationText = `${appState.durationHours} hr${appState.durationHours > 1 ? 's' : ''}`;
             document.getElementById('slot-preview').innerText = `${getFormattedSlot()} (${durationText})`;
             document.getElementById('bottom-slot').innerText = getFormattedSlot();
-        }
-
-        function renderDateStrip() {
-            const strip = document.getElementById('date-strip');
-            strip.innerHTML = '';
-            const base = new Date();
-            
-            // Build next 14 consecutive days as touch cards
-            for (let i = 0; i < 14; i++) {
-                const d = new Date(base);
-                d.setHours(12, 0, 0, 0);
-                d.setDate(base.getDate() + i);
-                const dateStr = d.toISOString().split('T')[0];
-                const isActive = dateStr === appState.selectedDate;
-
-                const card = document.createElement('button');
-                card.type = 'button';
-                card.className = `date-card snap-start ${isActive ? 'active' : ''}`;
-                card.innerHTML = `
-                    <div class="text-[9px] uppercase font-bold tracking-wider">${i === 0 ? 'Today' : (i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US',{weekday:'short'}))}</div>
-                    <div class="date-number">${d.getDate()}</div>
-                    <div class="text-[9px] mt-0.5 font-medium opacity-80">${d.toLocaleDateString('en-US',{month:'short'})}</div>
-                `;
-                card.onclick = () => {
-                    appState.selectedDate = dateStr;
-                    document.getElementById('custom-date-picker').value = dateStr;
-                    onFilterChange();
-                };
-                strip.appendChild(card);
-            }
-
-            // Update header date label
-            const selDateObj = new Date(appState.selectedDate + 'T12:00:00');
-            document.getElementById('display-date-label').innerText = selDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         }
 
         function updateAvailabilitySummary(customText) {
@@ -628,10 +559,10 @@
         }
 
         function onFilterChange() {
+            appState.selectedDate = document.getElementById('selected-date').value;
             appState.startTime = document.getElementById('start-time').value || getCurrentTimeHHMM();
             appState.durationHours = document.getElementById('duration-hours').value;
             appState.selectedTables = [];
-            renderDateStrip();
             updateSlotPreview();
             updateSelectionUI();
             loadData();
