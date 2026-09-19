@@ -747,10 +747,10 @@
                 } else {
                     methodBadge = `
                         <div class="flex items-center gap-1.5">
-                            <button onclick="updatePaymentMethod(${b.id}, 'CASH')" class="px-2 py-1 text-[10px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg transition-all">
+                            <button onclick="updatePaymentMethod('${b.id}', 'CASH')" class="px-2 py-1 text-[10px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg transition-all">
                                 💵 Cash
                             </button>
-                            <button onclick="updatePaymentMethod(${b.id}, 'CARD')" class="px-2 py-1 text-[10px] font-bold bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg transition-all">
+                            <button onclick="updatePaymentMethod('${b.id}', 'CARD')" class="px-2 py-1 text-[10px] font-bold bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg transition-all">
                                 💳 Card
                             </button>
                         </div>
