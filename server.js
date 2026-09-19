@@ -563,5 +563,26 @@ app.delete('/api/admin/bookings/:id', async (req, res) => {
     res.json({ success: true, message: `Booking ${id} permanently deleted.` });
 });
 
+// UPDATE BOOKING PAYMENT METHOD (CASH / CARD)
+app.patch('/api/admin/bookings/:id/payment', async (req, res) => {
+    const { id } = req.params;
+    const { payment_method } = req.body;
+
+    if (!['CASH', 'CARD'].includes(payment_method)) {
+        return res.status(400).json({ error: 'Invalid payment method. Expected CASH or CARD.' });
+    }
+
+    const { data, error } = await supabase
+        .from('bookings')
+        .update({ payment_method })
+        .eq('id', id)
+        .select();
+
+    if (error) return res.status(500).json({ error: error.message });
+    if (!data || data.length === 0) return res.status(404).json({ error: 'Booking not found.' });
+
+    res.json({ success: true, booking: data[0] });
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`CueCraft Server running on port ${PORT}`));
