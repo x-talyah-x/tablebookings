@@ -253,7 +253,6 @@ app.get('/api/admin/day-bookings', async (req, res) => {
 });
 
 // EXECUTE ADMIN ACTION ITEM (WALK_IN, MAINTENANCE, RESERVED, CLEAR_TABLE)
-// EXECUTE ADMIN ACTION ITEM (WALK_IN, MAINTENANCE, RESERVED, CLEAR_TABLE)
 app.post('/api/admin/action-item', async (req, res) => {
     const { actionType, tables, slots, date, durationHours, startTimeOverride, paymentMethod, price } = req.body;
 
@@ -327,15 +326,18 @@ app.post('/api/admin/action-item', async (req, res) => {
     let userName = 'Walk-In Customer';
     let status = 'WALK_IN';
     let pMethod = paymentMethod || null;
+    let userIdentifier = 'WALK_IN_USER';
 
     if (actionType === 'MAINTENANCE') {
         userName = 'Maintenance Mode';
         status = 'MAINTENANCE';
         pMethod = null;
+        userIdentifier = 'SYSTEM_MAINTENANCE';
     } else if (actionType === 'RESERVED') {
         userName = 'League / Reserved';
         status = 'RESERVED';
         pMethod = null;
+        userIdentifier = 'SYSTEM_RESERVED';
     }
 
     const rows = tables.map(tableId => {
@@ -354,7 +356,8 @@ app.post('/api/admin/action-item', async (req, res) => {
             duration_hours: duration,
             time_slot: slotStr,
             user_name: userName,
-            phone: actionType === 'WALK_IN' ? 'N/A' : null,
+            user_identifier: userIdentifier,
+            phone: actionType === 'WALK_IN' ? 'N/A' : 'N/A',
             status: status,
             payment_method: pMethod,
             total_price: calculatedPrice,
@@ -367,6 +370,7 @@ app.post('/api/admin/action-item', async (req, res) => {
 
     res.status(201).json({ success: true, count: data.length, bookings: data });
 });
+
 // MONTHLY SUMMARY AGGREGATION
 app.get('/api/admin/month-summary', async (req, res) => {
     const { month } = req.query; // YYYY-MM
