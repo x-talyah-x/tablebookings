@@ -70,6 +70,12 @@
         .availability-key { width:8px; height:8px; border-radius:50%; display:inline-block; }
         .available-key { background:#10b981; }
         .booked-key { background:#ef4444; }
+
+        /* Custom style for dynamic time input color rendering */
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col bg-[#0b0f17] pb-24 md:pb-0">
@@ -82,7 +88,7 @@
                 <h1 class="text-lg md:text-xl font-extrabold tracking-tight text-white">CUECRAFT <span class="text-felt-500 text-xs md:text-sm">Lounge</span></h1>
             </div>
             <div class="text-[11px] md:text-xs text-gray-400 text-right">
-                <span>Bookings: 11am - 10pm</span>
+                <span>Flexible Booking Slots</span>
             </div>
         </div>
     </header>
@@ -110,37 +116,37 @@
                 <div>
                     <p class="text-felt-400 text-[10px] md:text-xs font-bold uppercase tracking-wider">Book a table</p>
                     <h2 class="text-lg md:text-2xl font-bold text-white mt-1">When are you playing?</h2>
-                    <p class="text-xs md:text-sm text-gray-400 mt-1">Select your start time and 1-hour time slots. Choose one or multiple tables.</p>
+                    <p class="text-xs md:text-sm text-gray-400 mt-1">Select your exact custom date and time. Table slots run in 1-hour blocks.</p>
                 </div>
                 <div class="hidden sm:flex items-center gap-2 text-[10px] text-gray-400 bg-gray-950 border border-gray-800 rounded-xl px-3 py-2">
                     <i data-lucide="clock" class="w-3.5 h-3.5 text-felt-500"></i>
-                    11:00 AM – 10:00 PM
+                    Custom Time Picker
                 </div>
             </div>
 
-            <!-- Date cards -->
+            <!-- Date cards & native date picker -->
             <div class="mb-4">
-                <label class="block text-[10px] uppercase font-bold text-gray-500 mb-2">Select date</label>
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-[10px] uppercase font-bold text-gray-500">Select date</label>
+                    <input type="date" id="selected-date" class="bg-gray-950 border border-gray-700 text-white text-xs rounded-lg px-2 py-1 focus:outline-none focus:border-felt-500">
+                </div>
                 <div id="date-strip" class="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1"></div>
-                <input type="date" id="selected-date" class="sr-only">
             </div>
 
-            <!-- Time + duration -->
+            <!-- Custom Start Time & Duration -->
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-[10px] uppercase font-bold text-gray-500 mb-2">Start time</label>
-                    <select id="start-time" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-felt-500">
-                        <!-- Populated dynamically via JS to support 15-min start intervals -->
-                    </select>
+                    <label class="block text-[10px] uppercase font-bold text-gray-500 mb-2">Custom start time</label>
+                    <input type="time" id="start-time" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-felt-500">
                 </div>
                 <div>
-                    <label class="block text-[10px] uppercase font-bold text-gray-500 mb-2">Duration (1-Hr Slots)</label>
-                    <select id="duration-hours" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-felt-500">
-                        <option value="1">1 hour slot</option>
-                        <option value="2" selected>2 hour slots</option>
-                        <option value="3">3 hour slots</option>
-                        <option value="4">4 hour slots</option>
-                        <option value="5">5 hour slots</option>
+                    <label class="block text-[10px] uppercase font-bold text-gray-500 mb-2">Duration (1-Hr Block Slots)</label>
+                    <select id="duration-hours" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-felt-500">
+                        <option value="1">1 Hour Slot</option>
+                        <option value="2" selected>2 Hour Slots</option>
+                        <option value="3">3 Hour Slots</option>
+                        <option value="4">4 Hour Slots</option>
+                        <option value="5">5 Hour Slots</option>
                     </select>
                 </div>
             </div>
@@ -148,7 +154,7 @@
             <div class="mt-4 flex items-center justify-between rounded-xl bg-felt-950/60 border border-felt-800/60 px-3 py-2.5">
                 <div class="flex items-center gap-2">
                     <i data-lucide="calendar-clock" class="w-4 h-4 text-felt-400"></i>
-                    <span class="text-xs text-gray-300">Booking window</span>
+                    <span class="text-xs text-gray-300">Calculated Slot Window</span>
                 </div>
                 <span id="slot-preview" class="text-xs font-bold text-felt-400">--</span>
             </div>
@@ -231,7 +237,7 @@
             <div class="flex justify-between items-start">
                 <div>
                     <h3 class="text-base md:text-lg font-bold text-white">Book Table(s): <span id="modal-table-num" class="text-felt-400"></span></h3>
-                    <p class="text-xs text-gray-400 mt-0.5">1-hour slot reservation summary</p>
+                    <p class="text-xs text-gray-400 mt-0.5">Flexible 1-hour duration reservation</p>
                 </div>
                 <button type="button" onclick="closeBookingModal()" class="text-gray-400 hover:text-white p-1">
                     <i data-lucide="x" class="w-5 h-5"></i>
@@ -273,10 +279,16 @@
         let userId = localStorage.getItem('cuecraft_user_id') || 'usr_' + Math.random().toString(36).substr(2, 9);
         localStorage.setItem('cuecraft_user_id', userId);
 
+        // Utility to get current local time in HH:MM format
+        function getCurrentTimeHHMM() {
+            const now = new Date();
+            return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        }
+
         let appState = {
             tables: [],
             selectedDate: new Date().toISOString().split('T')[0],
-            startTime: "14:30",
+            startTime: getCurrentTimeHHMM(), // Dynamically defaults to current local user time
             durationHours: 2,
             selectedTables: []
         };
@@ -307,8 +319,6 @@
         };
 
         window.addEventListener('DOMContentLoaded', () => {
-            populateStartTimeOptions();
-            
             if (typeof lucide !== 'undefined') lucide.createIcons();
 
             document.getElementById('selected-date').value = appState.selectedDate;
@@ -330,27 +340,11 @@
             loadData();
         });
 
-        function populateStartTimeOptions() {
-            const select = document.getElementById('start-time');
-            select.innerHTML = '';
-            
-            // Allow 15-minute start intervals from 11:00 to 21:00
-            for (let hour = 11; hour <= 21; hour++) {
-                for (let min of [0, 15, 30, 45]) {
-                    if (hour === 21 && min > 0) break; // Last start time is 21:00
-                    const val = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
-                    const opt = document.createElement('option');
-                    opt.value = val;
-                    opt.innerText = formatTime12H(val);
-                    if (val === appState.startTime) opt.selected = true;
-                    select.appendChild(opt);
-                }
-            }
-        }
-
         function calculateEndTime(startTimeStr, hoursToAdd) {
             if (!startTimeStr) return "";
-            const [hours, minutes] = startTimeStr.split(':').map(Number);
+            const parts = startTimeStr.split(':');
+            const hours = parseInt(parts[0], 10) || 0;
+            const minutes = parseInt(parts[1], 10) || 0;
             const totalMinutes = hours * 60 + minutes + (parseInt(hoursToAdd) * 60);
             const endHours = Math.floor(totalMinutes / 60) % 24;
             const endMinutes = totalMinutes % 60;
@@ -359,11 +353,13 @@
 
         function formatTime12H(time24) {
             if (!time24) return "";
-            let [hours, minutes] = time24.split(':').map(Number);
+            const parts = time24.split(':');
+            let hours = parseInt(parts[0], 10) || 0;
+            const minutes = parseInt(parts[1], 10) || 0;
             const ampm = hours >= 12 ? 'pm' : 'am';
             hours = hours % 12 || 12;
             const minStr = String(minutes).padStart(2, '0');
-            return minStr === '00' ? `${hours}${ampm}` : `${hours}:${minStr}${ampm}`;
+            return `${hours}:${minStr}${ampm}`;
         }
 
         function getFormattedSlot() {
@@ -426,7 +422,7 @@
                 const data = await res.json();
                 appState.tables = Array.isArray(data) ? data : [];
             } catch (err) {
-                // Mock fallback to allow demo interaction if backend is not live
+                // Demo fallback allowing table selection when backend is offline
                 appState.tables = Object.keys(floorPlanCoordinates).map(num => ({ id: parseInt(num), price: 50 }));
             }
             renderFloorPlan();
@@ -541,7 +537,7 @@
             document.getElementById('modal-table-num').innerText = tableListStr;
             document.getElementById('modal-date').innerText = new Date(appState.selectedDate + 'T12:00:00').toLocaleDateString('en-ZA', {weekday:'short', day:'numeric', month:'short', year:'numeric'});
             document.getElementById('modal-time-slot').innerText = timeSlotStr;
-            document.getElementById('modal-duration').innerText = `${duration} Hour${duration > 1 ? 's' : ''} (${duration} slot${duration > 1 ? 's' : ''})`;
+            document.getElementById('modal-duration').innerText = `${duration} Hour${duration > 1 ? 's' : ''}`;
             document.getElementById('modal-tables-count').innerText = `${appState.selectedTables.length} Table${appState.selectedTables.length > 1 ? 's' : ''}`;
             document.getElementById('modal-subtotal').innerText = `R${subtotal}`;
             document.getElementById('modal-booking-fee').innerText = `+R${bookingFee}`;
@@ -574,7 +570,6 @@
                 });
 
                 if (res.ok) {
-                    alert('Reservation successfully created!');
                     closeBookingModal();
                     onFilterChange();
                 } else {
@@ -582,7 +577,6 @@
                     alert(data.error || 'Failed to complete booking.');
                 }
             } catch (err) {
-                alert('Reservation successfully submitted!');
                 closeBookingModal();
                 onFilterChange();
             }
@@ -590,7 +584,7 @@
 
         function onFilterChange() {
             appState.selectedDate = document.getElementById('selected-date').value;
-            appState.startTime = document.getElementById('start-time').value;
+            appState.startTime = document.getElementById('start-time').value || getCurrentTimeHHMM();
             appState.durationHours = document.getElementById('duration-hours').value;
             appState.selectedTables = [];
             renderDateStrip();
