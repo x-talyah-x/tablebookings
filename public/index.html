@@ -226,7 +226,7 @@
             <div class="flex justify-between items-start">
                 <div>
                     <h3 class="text-base md:text-lg font-bold text-white">Book Table(s): <span id="modal-table-num" class="text-felt-400"></span></h3>
-                    <p class="text-xs text-gray-400 mt-0.5">Flexible 1-hour duration reservation</p>
+                    <p class="text-xs text-gray-400 mt-0.5">Your booking information</p>
                 </div>
                 <button type="button" onclick="closeBookingModal()" class="text-gray-400 hover:text-white p-1">
                     <i data-lucide="x" class="w-5 h-5"></i>
@@ -244,6 +244,8 @@
             </div>
 
             <form id="booking-form" class="space-y-3">
+                 <p class="text-xs text-gray-400 mt-0.5">I acknowledge that this is the fee to be paid at the counter upon arrival. Booking fee included. </p>
+                 <p class="text-xs text-gray-400 mt-0.5">I acknowledge that the booking will be cancelled if no show after 15 minutes.</p>
                 <input type="hidden" id="form-total-price">
                 <div>
                     <label class="block text-[10px] uppercase font-semibold text-gray-400 mb-1">Full Name</label>
@@ -277,7 +279,7 @@
             tables: [],
             selectedDate: new Date().toISOString().split('T')[0],
             startTime: getCurrentTimeHHMM(),
-            durationHours: 2,
+            durationHours: 1,
             selectedTables: []
         };
 
