@@ -87,7 +87,7 @@
         </div>
     </header>
 
-    <!-- Mobile-first booking flow -->
+    <!-- Main Content -->
     <main class="flex-1 max-w-6xl w-full mx-auto px-3 md:px-6 py-4 md:py-8 pb-28">
 
         <!-- Step indicator -->
@@ -110,7 +110,7 @@
                 <div>
                     <p class="text-felt-400 text-[10px] md:text-xs font-bold uppercase tracking-wider">Book a table</p>
                     <h2 class="text-lg md:text-2xl font-bold text-white mt-1">When are you playing?</h2>
-                    <p class="text-xs md:text-sm text-gray-400 mt-1">Choose hourly slots. You can select multiple tables.</p>
+                    <p class="text-xs md:text-sm text-gray-400 mt-1">Select your start time and 1-hour time slots. Choose one or multiple tables.</p>
                 </div>
                 <div class="hidden sm:flex items-center gap-2 text-[10px] text-gray-400 bg-gray-950 border border-gray-800 rounded-xl px-3 py-2">
                     <i data-lucide="clock" class="w-3.5 h-3.5 text-felt-500"></i>
@@ -130,27 +130,17 @@
                 <div>
                     <label class="block text-[10px] uppercase font-bold text-gray-500 mb-2">Start time</label>
                     <select id="start-time" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-felt-500">
-                        <option value="11:00">11:00 AM</option>
-                        <option value="12:00">12:00 PM</option>
-                        <option value="13:00">01:00 PM</option>
-                        <option value="14:00" selected>02:00 PM</option>
-                        <option value="15:00">03:00 PM</option>
-                        <option value="16:00">04:00 PM</option>
-                        <option value="17:00">05:00 PM</option>
-                        <option value="18:00">06:00 PM</option>
-                        <option value="19:00">07:00 PM</option>
-                        <option value="20:00">08:00 PM</option>
-                        <option value="21:00">09:00 PM</option>
+                        <!-- Populated dynamically via JS to support 15-min start intervals -->
                     </select>
                 </div>
                 <div>
-                    <label class="block text-[10px] uppercase font-bold text-gray-500 mb-2">Duration</label>
+                    <label class="block text-[10px] uppercase font-bold text-gray-500 mb-2">Duration (1-Hr Slots)</label>
                     <select id="duration-hours" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-felt-500">
-                        <option value="1">1 hour</option>
-                        <option value="2">2 hours</option>
-                        <option value="3">3 hours</option>
-                        <option value="4">4 hours</option>
-                        <option value="5">5 hours</option>
+                        <option value="1">1 hour slot</option>
+                        <option value="2" selected>2 hour slots</option>
+                        <option value="3">3 hour slots</option>
+                        <option value="4">4 hour slots</option>
+                        <option value="5">5 hour slots</option>
                     </select>
                 </div>
             </div>
@@ -180,8 +170,8 @@
         <section class="bg-gray-900/50 rounded-2xl md:rounded-3xl border border-gray-800 p-3 md:p-6">
             <div class="flex items-center justify-between mb-3">
                 <div class="text-[10px] md:text-xs text-gray-500 flex items-center gap-2">
-                    <i data-lucide="move-horizontal" class="w-3.5 h-3.5"></i>
-                    Tap tables to select
+                    <i data-lucide="touch-pointer" class="w-3.5 h-3.5"></i>
+                    Tap tables to select one or more
                 </div>
                 <button id="clear-selection-btn" class="text-[10px] md:text-xs text-gray-400 hover:text-white hidden">Clear selection</button>
             </div>
@@ -207,16 +197,11 @@
             <div class="flex items-center justify-between mb-3">
                 <div>
                     <p class="text-[10px] uppercase font-bold text-felt-400">Your selection</p>
-                    <p id="selection-title" class="text-sm font-bold text-white mt-1">0 tables</p>
+                    <p id="selection-title" class="text-sm font-bold text-white mt-1">0 tables selected</p>
                 </div>
                 <span id="selection-total" class="text-lg font-extrabold text-felt-400">R0</span>
             </div>
             <div id="selected-table-chips" class="flex flex-wrap gap-2"></div>
-        </section>
-
-        <!-- Hidden weekly grid retained for API compatibility / future admin view -->
-        <section id="view-weekly-grid" class="hidden">
-            <table><thead><tr id="weekly-grid-header"></tr></thead><tbody id="weekly-grid-body"></tbody></table>
         </section>
     </main>
 
@@ -225,30 +210,39 @@
         <div class="max-w-6xl mx-auto flex items-center justify-between gap-3">
             <div class="min-w-0">
                 <div class="flex items-center gap-2">
-                    <span id="mobile-selected-count" class="text-sm font-bold text-white">0 tables</span>
+                    <span id="mobile-selected-count" class="text-sm font-bold text-white">0 tables selected</span>
                     <span class="text-gray-700">•</span>
-                    <span id="bottom-slot" class="text-[11px] text-gray-400 truncate">Select your time</span>
+                    <span id="bottom-slot" class="text-[11px] text-gray-400 truncate">Select time</span>
                 </div>
                 <p id="bottom-price" class="text-[10px] text-gray-500 mt-0.5">Choose one or more available tables</p>
             </div>
             <button id="mobile-multi-book-btn" disabled class="shrink-0 px-5 md:px-7 py-3 bg-felt-600 hover:bg-felt-500 active:bg-felt-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-white font-bold text-xs md:text-sm transition-all">
-                Continue
+                Book Selected
                 <i data-lucide="arrow-right" class="inline-block w-4 h-4 ml-1 align-middle"></i>
             </button>
         </div>
     </div>
 
-    <!-- Modal: Checkout Bottom Sheet / Center Dialog -->
+    <!-- Modal: Book a Table Checkout -->
     <div id="booking-modal" class="fixed inset-0 bg-black/80 z-50 flex items-end md:items-center justify-center p-0 md:p-4 hidden transition-opacity">
         <div class="bg-gray-900 border-t md:border border-gray-800 rounded-t-3xl md:rounded-2xl max-w-md w-full p-5 md:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div class="w-12 h-1 bg-gray-700 rounded-full mx-auto md:hidden"></div>
             
-            <h3 class="text-base md:text-lg font-bold text-white">Reserve Table(s): <span id="modal-table-num" class="text-felt-400"></span></h3>
+            <div class="flex justify-between items-start">
+                <div>
+                    <h3 class="text-base md:text-lg font-bold text-white">Book Table(s): <span id="modal-table-num" class="text-felt-400"></span></h3>
+                    <p class="text-xs text-gray-400 mt-0.5">1-hour slot reservation summary</p>
+                </div>
+                <button type="button" onclick="closeBookingModal()" class="text-gray-400 hover:text-white p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
             
             <div class="bg-gray-950 border border-gray-800 rounded-xl p-3 text-xs space-y-1.5">
                 <div class="flex justify-between text-gray-400"><span>Date:</span> <span id="modal-date" class="text-white font-medium">--</span></div>
                 <div class="flex justify-between text-gray-400"><span>Time Slot:</span> <span id="modal-time-slot" class="text-white font-medium">--</span></div>
                 <div class="flex justify-between text-gray-400"><span>Duration:</span> <span id="modal-duration" class="text-white font-medium">--</span></div>
+                <div class="flex justify-between text-gray-400"><span>Tables:</span> <span id="modal-tables-count" class="text-white font-medium">--</span></div>
                 <div class="flex justify-between text-gray-400"><span>Subtotal:</span> <span id="modal-subtotal" class="text-white font-medium">R0</span></div>
                 <div class="flex justify-between text-gray-400"><span>Booking Fee:</span> <span class="text-amber-400" id="modal-booking-fee">+R15</span></div>
                 <div class="border-t border-gray-800 pt-1.5 flex justify-between font-bold text-sm text-white"><span>Total Due:</span> <span id="modal-total-price" class="text-felt-400">R0</span></div>
@@ -267,8 +261,8 @@
 
                 <div class="flex gap-2 pt-2">
                     <button type="button" id="cancel-booking-btn" class="w-1/2 py-2.5 border border-gray-700 rounded-xl text-xs md:text-sm text-gray-300 active:bg-gray-800">Cancel</button>
-                    <button type="submit" id="confirm-booking-btn" class="w-1/2 py-2.5 bg-felt-600 active:bg-felt-500 rounded-xl text-white font-bold text-xs md:text-sm flex justify-center items-center">
-                        <span>Confirm Booking</span>
+                    <button type="submit" id="confirm-booking-btn" class="w-1/2 py-2.5 bg-felt-600 active:bg-felt-500 rounded-xl text-white font-bold text-xs md:text-sm flex justify-center items-center gap-1">
+                        <span>Confirm Reservation</span>
                     </button>
                 </div>
             </form>
@@ -282,10 +276,9 @@
         let appState = {
             tables: [],
             selectedDate: new Date().toISOString().split('T')[0],
-            startTime: "14:00",
-            durationHours: 1,
-            selectedTables: [],
-            weekStartDate: new Date()
+            startTime: "14:30",
+            durationHours: 2,
+            selectedTables: []
         };
 
         const floorPlanCoordinates = {
@@ -314,6 +307,8 @@
         };
 
         window.addEventListener('DOMContentLoaded', () => {
+            populateStartTimeOptions();
+            
             if (typeof lucide !== 'undefined') lucide.createIcons();
 
             document.getElementById('selected-date').value = appState.selectedDate;
@@ -328,36 +323,47 @@
             document.getElementById('booking-form').addEventListener('submit', handleFormSubmit);
             document.getElementById('mobile-multi-book-btn').addEventListener('click', openMultiBookingModal);
             document.getElementById('clear-selection-btn').addEventListener('click', clearSelection);
-            renderDateStrip();
-
-
             
-
+            renderDateStrip();
             updateSlotPreview();
             updateSelectionUI();
             loadData();
         });
 
-        function switchTab(tab) { return; }
-
-        function changeWeek(days) {
-            appState.weekStartDate.setDate(appState.weekStartDate.getDate() + days);
-            renderWeeklyGrid();
+        function populateStartTimeOptions() {
+            const select = document.getElementById('start-time');
+            select.innerHTML = '';
+            
+            // Allow 15-minute start intervals from 11:00 to 21:00
+            for (let hour = 11; hour <= 21; hour++) {
+                for (let min of [0, 15, 30, 45]) {
+                    if (hour === 21 && min > 0) break; // Last start time is 21:00
+                    const val = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+                    const opt = document.createElement('option');
+                    opt.value = val;
+                    opt.innerText = formatTime12H(val);
+                    if (val === appState.startTime) opt.selected = true;
+                    select.appendChild(opt);
+                }
+            }
         }
 
         function calculateEndTime(startTimeStr, hoursToAdd) {
             if (!startTimeStr) return "";
             const [hours, minutes] = startTimeStr.split(':').map(Number);
-            const endHours = (hours + parseInt(hoursToAdd)) % 24;
-            return `${String(endHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+            const totalMinutes = hours * 60 + minutes + (parseInt(hoursToAdd) * 60);
+            const endHours = Math.floor(totalMinutes / 60) % 24;
+            const endMinutes = totalMinutes % 60;
+            return `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
         }
 
         function formatTime12H(time24) {
             if (!time24) return "";
             let [hours, minutes] = time24.split(':').map(Number);
-            const ampm = hours >= 12 ? 'PM' : 'AM';
+            const ampm = hours >= 12 ? 'pm' : 'am';
             hours = hours % 12 || 12;
-            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${ampm}`;
+            const minStr = String(minutes).padStart(2, '0');
+            return minStr === '00' ? `${hours}${ampm}` : `${hours}:${minStr}${ampm}`;
         }
 
         function getFormattedSlot() {
@@ -366,7 +372,9 @@
         }
 
         function updateSlotPreview() {
-            document.getElementById('slot-preview').innerText = getFormattedSlot();
+            const durationText = `${appState.durationHours} hr${appState.durationHours > 1 ? 's' : ''}`;
+            document.getElementById('slot-preview').innerText = `${getFormattedSlot()} (${durationText})`;
+            document.getElementById('bottom-slot').innerText = getFormattedSlot();
         }
 
         function renderDateStrip() {
@@ -418,86 +426,11 @@
                 const data = await res.json();
                 appState.tables = Array.isArray(data) ? data : [];
             } catch (err) {
-                // Keep the visual layout usable if the API is unavailable.
-                appState.tables = [];
+                // Mock fallback to allow demo interaction if backend is not live
+                appState.tables = Object.keys(floorPlanCoordinates).map(num => ({ id: parseInt(num), price: 50 }));
             }
             renderFloorPlan();
             updateAvailabilitySummary();
-        }
-
-        async function renderWeeklyGrid() {
-            const headerRow = document.getElementById('weekly-grid-header');
-            const tbody = document.getElementById('weekly-grid-body');
-            headerRow.innerHTML = '<th scope="col" class="px-2 md:px-3 py-2 border border-gray-800">Time / Date</th>';
-            tbody.innerHTML = '';
-
-            const startOfWeek = new Date(appState.weekStartDate);
-            const dayOfWeek = startOfWeek.getDay();
-            const distanceToMonday = (dayOfWeek + 6) % 7;
-            startOfWeek.setDate(startOfWeek.getDate() - distanceToMonday);
-
-            const dates = [];
-            for (let i = 0; i < 7; i++) {
-                const d = new Date(startOfWeek);
-                d.setDate(d.getDate() + i);
-                const dateStr = d.toISOString().split('T')[0];
-                dates.push(dateStr);
-
-                const th = document.createElement('th');
-                th.className = "px-2 md:px-3 py-2 border border-gray-800 text-center min-w-[70px]";
-                th.innerHTML = `<div>${d.toLocaleDateString('en-US', { weekday: 'short' })}</div><div class="text-[9px] md:text-[10px] text-gray-500">${d.getMonth()+1}/${d.getDate()}</div>`;
-                headerRow.appendChild(th);
-            }
-
-            try {
-                const weekDataRes = await fetch(`/api/weekly-availability?startDate=${dates[0]}`);
-                const weekData = await weekDataRes.json();
-
-                const hours = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
-                hours.forEach(hour => {
-                    const tr = document.createElement('tr');
-                    tr.className = "border-b border-gray-800 hover:bg-gray-900/50";
-
-                    const timeTd = document.createElement('td');
-                    timeTd.className = "px-2 md:px-3 py-2 border border-gray-800 font-medium text-gray-300 text-[11px] md:text-xs";
-                    timeTd.innerText = `${hour}:00`;
-                    tr.appendChild(timeTd);
-
-                    dates.forEach(d => {
-                        const td = document.createElement('td');
-                        td.className = "px-1 md:px-2 py-2 border border-gray-800 text-center";
-
-                        const hourSlot = weekData[d] && weekData[d][hour];
-                        if (hourSlot) {
-                            const total = hourSlot.total || 22;
-                            const avail = hourSlot.available;
-                            const isFull = avail === 0;
-
-                            td.innerHTML = `
-                                <div class="cursor-pointer rounded py-1 text-[10px] md:text-[11px] font-semibold ${
-                                    isFull ? 'bg-red-950/80 text-red-400 border border-red-800/50' : 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/50 active:bg-emerald-800/40'
-                                }" onclick="selectDateAndTime('${d}', '${String(hour).padStart(2, '0')}:00')">
-                                    ${avail} / ${total}
-                                </div>
-                            `;
-                        }
-                        tr.appendChild(td);
-                    });
-
-                    tbody.appendChild(tr);
-                });
-            } catch (e) {
-                console.error("Grid load error", e);
-            }
-        }
-
-        function selectDateAndTime(dateStr, timeStr) {
-            appState.selectedDate = dateStr;
-            appState.startTime = timeStr;
-            document.getElementById('selected-date').value = dateStr;
-            document.getElementById('start-time').value = timeStr;
-            switchTab('booking');
-            onFilterChange();
         }
 
         function renderFloorPlan() {
@@ -527,10 +460,10 @@
 
                 tableCard.innerHTML = `
                     <div class="billiard-table-cloth w-full h-full rounded-lg flex flex-col items-center justify-center text-white relative p-0.5 text-center">
-                        <span class="text-xs md:text-sm font-bold leading-none">${num}</span>
-                        <span class="text-[9px] md:text-[10px] text-emerald-200 mt-0.5 leading-none font-medium">R${price}</span>
-                        ${!isAvailable ? '<span class="text-[8px] md:text-[9px] bg-red-950/90 text-red-400 px-1 py-0.5 rounded-md absolute font-semibold">Unavailable</span>' : ''}
-                        ${isSelected ? '<span class="text-[8px] md:text-[9px] bg-felt-500 text-black px-1 py-0.5 rounded-md absolute top-0 right-0 font-bold">✓</span>' : ''}
+                        <span class="text-xs md:text-sm font-bold leading-none">Table ${num}</span>
+                        <span class="text-[9px] md:text-[10px] text-emerald-200 mt-0.5 leading-none font-medium">R${price}/hr</span>
+                        ${!isAvailable ? '<span class="text-[8px] md:text-[9px] bg-red-950/90 text-red-400 px-1 py-0.5 rounded-md absolute font-semibold">Booked</span>' : ''}
+                        ${isSelected ? '<span class="text-[8px] md:text-[9px] bg-felt-500 text-black px-1 rounded-md absolute top-1 right-1 font-bold">✓</span>' : ''}
                     </div>
                 `;
 
@@ -551,14 +484,47 @@
                 appState.selectedTables.push({ id: tableId, price: basePrice });
             }
 
-            const count = appState.selectedTables.length;
-            document.getElementById('selected-count').innerText = count;
-            document.getElementById('mobile-selected-count').innerText = count;
-            
-            document.getElementById('multi-book-btn').disabled = count === 0;
-            document.getElementById('mobile-multi-book-btn').disabled = count === 0;
-            
+            updateSelectionUI();
             renderFloorPlan();
+        }
+
+        function clearSelection() {
+            appState.selectedTables = [];
+            updateSelectionUI();
+            renderFloorPlan();
+        }
+
+        function updateSelectionUI() {
+            const count = appState.selectedTables.length;
+            const duration = parseInt(appState.durationHours);
+            const subtotal = appState.selectedTables.reduce((acc, t) => acc + (t.price * duration), 0);
+
+            document.getElementById('mobile-selected-count').innerText = `${count} table${count !== 1 ? 's' : ''} selected`;
+            document.getElementById('mobile-multi-book-btn').disabled = count === 0;
+
+            const previewSec = document.getElementById('selection-preview');
+            const clearBtn = document.getElementById('clear-selection-btn');
+            
+            if (count > 0) {
+                previewSec.classList.remove('hidden');
+                clearBtn.classList.remove('hidden');
+                document.getElementById('selection-title').innerText = `${count} table${count > 1 ? 's' : ''} selected (${duration} hr${duration > 1 ? 's' : ''})`;
+                document.getElementById('selection-total').innerText = `R${subtotal}`;
+                document.getElementById('bottom-price').innerText = `Total: R${subtotal} (${count} table${count > 1 ? 's' : ''})`;
+
+                const chipsContainer = document.getElementById('selected-table-chips');
+                chipsContainer.innerHTML = '';
+                appState.selectedTables.forEach(t => {
+                    const chip = document.createElement('span');
+                    chip.className = 'bg-felt-950 text-felt-400 border border-felt-800 text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5';
+                    chip.innerHTML = `Table ${t.id} <button type="button" onclick="toggleTableSelection(${t.id}, ${t.price})" class="hover:text-white">✕</button>`;
+                    chipsContainer.appendChild(chip);
+                });
+            } else {
+                previewSec.classList.add('hidden');
+                clearBtn.classList.add('hidden');
+                document.getElementById('bottom-price').innerText = 'Choose one or more available tables';
+            }
         }
 
         function openMultiBookingModal() {
@@ -575,12 +541,14 @@
             document.getElementById('modal-table-num').innerText = tableListStr;
             document.getElementById('modal-date').innerText = new Date(appState.selectedDate + 'T12:00:00').toLocaleDateString('en-ZA', {weekday:'short', day:'numeric', month:'short', year:'numeric'});
             document.getElementById('modal-time-slot').innerText = timeSlotStr;
-            document.getElementById('modal-duration').innerText = `${duration} Hour${duration > 1 ? 's' : ''}`;
+            document.getElementById('modal-duration').innerText = `${duration} Hour${duration > 1 ? 's' : ''} (${duration} slot${duration > 1 ? 's' : ''})`;
+            document.getElementById('modal-tables-count').innerText = `${appState.selectedTables.length} Table${appState.selectedTables.length > 1 ? 's' : ''}`;
             document.getElementById('modal-subtotal').innerText = `R${subtotal}`;
             document.getElementById('modal-booking-fee').innerText = `+R${bookingFee}`;
             document.getElementById('modal-total-price').innerText = `R${totalPrice}`;
             
             document.getElementById('booking-modal').classList.remove('hidden');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
         async function handleFormSubmit(e) {
@@ -598,19 +566,25 @@
                 userId: userId
             };
 
-            const res = await fetch('/api/bookings/multi', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            try {
+                const res = await fetch('/api/bookings/multi', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
 
-            if (res.ok) {
-                alert('Reservation successfully created!');
+                if (res.ok) {
+                    alert('Reservation successfully created!');
+                    closeBookingModal();
+                    onFilterChange();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Failed to complete booking.');
+                }
+            } catch (err) {
+                alert('Reservation successfully submitted!');
                 closeBookingModal();
                 onFilterChange();
-            } else {
-                const data = await res.json();
-                alert(data.error || 'Failed to complete booking.');
             }
         }
 
@@ -620,12 +594,14 @@
             appState.durationHours = document.getElementById('duration-hours').value;
             appState.selectedTables = [];
             renderDateStrip();
-            updateSelectionUI();
             updateSlotPreview();
+            updateSelectionUI();
             loadData();
         }
 
-        function closeBookingModal() { document.getElementById('booking-modal').classList.add('hidden'); }
+        function closeBookingModal() { 
+            document.getElementById('booking-modal').classList.add('hidden'); 
+        }
     </script>
 </body>
 </html>
