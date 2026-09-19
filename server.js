@@ -332,7 +332,7 @@ app.post('/api/admin/action-item', async (req, res) => {
     if (actionType === 'MAINTENANCE') {
         userName = 'Maintenance Mode';
         status = 'MAINTENANCE';
-        pMethod = null;
+        pMethod = 'N/A'; // Default payment method to N/A for Maintenance Mode
         userIdentifier = 'SYSTEM_MAINTENANCE';
     } else if (actionType === 'RESERVED') {
         userName = 'League / Reserved';
@@ -347,6 +347,9 @@ app.post('/api/admin/action-item', async (req, res) => {
         
         if (actionType === 'WALK_IN') {
             calculatedPrice = price ? (price / tables.length) : (tableRate * duration);
+        } else if (actionType === 'RESERVED') {
+            // Calculate total price using the default table price rate * duration
+            calculatedPrice = tableRate * duration;
         }
 
         return {
@@ -358,7 +361,7 @@ app.post('/api/admin/action-item', async (req, res) => {
             time_slot: slotStr,
             user_name: userName,
             user_identifier: userIdentifier,
-            phone: actionType === 'WALK_IN' ? 'N/A' : 'N/A',
+            phone: 'N/A',
             status: status,
             payment_method: pMethod,
             total_price: calculatedPrice,
