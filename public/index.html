@@ -114,11 +114,11 @@
                 <div>
                     <p class="text-felt-400 text-[10px] md:text-xs font-bold uppercase tracking-wider">Book a table</p>
                     <h2 class="text-lg md:text-2xl font-bold text-white mt-1">When are you playing?</h2>
-                    <p class="text-xs md:text-sm text-gray-400 mt-1">Select your exact date and custom time. Bookings are reserved in 1-hour slots.</p>
+                    <p class="text-xs md:text-sm text-gray-400 mt-1">Select your exact date and time. Bookings are reserved in 1-hour slots.</p>
                 </div>
                 <div class="hidden sm:flex items-center gap-2 text-[10px] text-gray-400 bg-gray-950 border border-gray-800 rounded-xl px-3 py-2">
                     <i data-lucide="clock" class="w-3.5 h-3.5 text-felt-500"></i>
-                    Custom Date & Time
+                    Operating Hours: 11am to 2am 
                 </div>
             </div>
 
@@ -134,7 +134,7 @@
 
                 <!-- Custom Start Time -->
                 <div>
-                    <label class="block text-[10px] uppercase font-bold text-gray-400 mb-2 tracking-wider">Custom Start Time</label>
+                    <label class="block text-[10px] uppercase font-bold text-gray-400 mb-2 tracking-wider">Start Time</label>
                     <div class="relative">
                         <input type="time" id="start-time" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm font-semibold text-white focus:outline-none focus:border-felt-500">
                     </div>
@@ -142,10 +142,10 @@
 
                 <!-- Duration -->
                 <div>
-                    <label class="block text-[10px] uppercase font-bold text-gray-400 mb-2 tracking-wider">Duration (1-Hr Block Slots)</label>
+                    <label class="block text-[10px] uppercase font-bold text-gray-400 mb-2 tracking-wider">Duration (1hr Block Slots)</label>
                     <select id="duration-hours" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm font-semibold text-white focus:outline-none focus:border-felt-500">
                         <option value="1" selected>1 Hour Slot</option>
-                        <option value="2" >2 Hour Slots</option>
+                        <option value="2">2 Hour Slots</option>
                         <option value="3">3 Hour Slots</option>
                         <option value="4">4 Hour Slots</option>
                         <option value="5">5 Hour Slots</option>
@@ -544,7 +544,6 @@
                 });
 
                 if (res.ok) {
-                    alert('Reservation successfully created!');
                     closeBookingModal();
                     onFilterChange();
                 } else {
@@ -552,7 +551,6 @@
                     alert(data.error || 'Failed to complete booking.');
                 }
             } catch (err) {
-                alert('Reservation successfully submitted!');
                 closeBookingModal();
                 onFilterChange();
             }
