@@ -12,6 +12,11 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Explicit route for admin dashboard page
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
 // Parse standard 24h or 12h time strings into total minutes from midnight
 function parseTimeToMinutes(timeStr) {
     if (!timeStr) return 0;
