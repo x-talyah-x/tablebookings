@@ -321,7 +321,8 @@ app.post('/api/admin/action-item', async (req, res) => {
     const priceMap = {};
     (dbTables || []).forEach(t => priceMap[t.id] = Number(t.price) || 60);
 
-    const duration = Number(durationHours) || 1;
+    // Safely parse duration as a whole integer to prevent bigint syntax errors
+    const duration = Math.max(1, Math.ceil(Number(durationHours) || 1));
 
     let userName = 'Walk-In Customer';
     let status = 'WALK_IN';
