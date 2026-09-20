@@ -304,11 +304,20 @@
             22: { col: 5, row: 7, isHorizontal: false }
         };
 
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
 
             const urlParams = new URLSearchParams(window.location.search);
+            const checkoutId = urlParams.get('checkoutId');
+
             if (urlParams.get('payment') === 'success') {
+                if (checkoutId) {
+                    try {
+                        await fetch(`/api/payments/verify/${checkoutId}`);
+                    } catch (err) {
+                        console.error('Payment sync error:', err);
+                    }
+                }
                 alert('Payment successful! Your table booking has been confirmed.');
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
