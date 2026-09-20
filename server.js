@@ -3,7 +3,6 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const https = require('https');
-const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
@@ -28,13 +27,13 @@ function parseTimeToMinutes(timeStr) {
     const cleanStr = timeStr.trim();
     if (cleanStr.includes('AM') || cleanStr.includes('PM')) {
         const parts = cleanStr.split(' ');
-        const [h, m] = parts[0].split(':').map(Number);
-        let hours = h % 12;
+        const timeParts = parts[0].split(':');
+        let hours = Number(timeParts[0]) % 12;
         if (parts[1] === 'PM') hours += 12;
-        return hours * 60 + (m || 0);
+        return hours * 60 + (Number(timeParts[1]) || 0);
     }
     const [h, m] = cleanStr.split(':').map(Number);
-    return h * 60 + (m || 0);
+    return (h || 0) * 60 + (m || 0);
 }
 
 // Convert slot strings or start_time/duration parameters into minute ranges for boundary checking
@@ -172,7 +171,6 @@ app.post('/api/payments/initialize', async (req, res) => {
 });
 
 // 2. YOCO WEBHOOK ROUTE FOR ASYNCHRONOUS CONFIRMATION
-// 2. YOCO WEBHOOK ROUTE FOR ASYNCHRONOUS CONFIRMATION
 app.post('/api/payments/webhook', async (req, res) => {
     try {
         const event = req.body;
@@ -191,13 +189,11 @@ app.post('/api/payments/webhook', async (req, res) => {
             }
 
             if (tableIds && Array.isArray(tableIds) && tableIds.length > 0) {
-                // Ensure HH:MM:SS format for PostgreSQL TIME column
                 let formattedStartTime = meta.startTime || '12:00:00';
                 if (formattedStartTime.length === 5) {
                     formattedStartTime += ':00';
                 }
 
-                // Generate short ref_id (max 20 chars for database VARCHAR constraint)
                 const yocoIdShort = paymentData.id ? paymentData.id.slice(-8) : Math.floor(100000 + Math.random() * 900000);
                 const baseRefId = `YOC-${yocoIdShort}`;
 
@@ -205,7 +201,6 @@ app.post('/api/payments/webhook', async (req, res) => {
                 const totalPricePerTable = Number(meta.totalPrice || 0) / tableIds.length;
 
                 const rows = tableIds.map((tableId, idx) => ({
-                    // Ensure ref_id stays unique and under 20 chars
                     ref_id: tableIds.length > 1 ? `${baseRefId}-${idx + 1}`.slice(0, 20) : baseRefId.slice(0, 20),
                     table_id: Number(tableId),
                     booking_date: meta.date,
@@ -531,7 +526,7 @@ app.post('/api/admin/action-item', async (req, res) => {
         }
 
         return {
-            ref_id: `${actionType.substring(0, 3)}-${Math.floor(100000 + Math.random() * 900000)}`,
+            ref_id: `${actionType.substring(0, 3)}-${Math.floor(100000 + Math.random() * 900000)}`.slice(0, 20),
             table_id: Number(tableId),
             booking_date: date,
             start_time: startTimeOverride,
@@ -686,7 +681,7 @@ app.post('/api/admin/bookings', async (req, res) => {
     }
 
     const newBooking = {
-        ref_id: `ADM-${Math.floor(100000 + Math.random() * 900000)}`,
+        ref_id: `ADM-${Math.floor(100000 + Math.random() * 900000)}`.slice(0, 20),
         table_id: Number(table_id),
         booking_date,
         start_time,
