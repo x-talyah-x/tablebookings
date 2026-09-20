@@ -127,6 +127,10 @@ async function recordBookingsFromMetadata(meta, checkoutOrPaymentId) {
 // ==========================================
 
 // 1. INITIALIZE YOCO CHECKOUT SESSION
+// Add this near top of server.js (after initializing express app)
+app.set('trust proxy', 1);
+
+// 1. INITIALIZE YOCO CHECKOUT SESSION
 app.post('/api/payments/initialize', async (req, res) => {
     const { tableIds, date, startTime, durationHours, slot, userName, phone, userId } = req.body;
 
@@ -134,7 +138,7 @@ app.post('/api/payments/initialize', async (req, res) => {
         return res.status(400).json({ error: 'Please select at least one table.' });
     }
 
-    // Check availability conflicts in Supabase
+    // Check availability conflicts
     const targetRange = convertSlotToRange(slot, startTime, durationHours);
     const { data: activeBookings, error: fetchErr } = await supabase
         .from('bookings')
@@ -157,7 +161,7 @@ app.post('/api/payments/initialize', async (req, res) => {
         }
     }
 
-    // Calculate total price
+    // Calculate total price server-side
     const { data: dbTables } = await supabase.from('pool_tables').select('id, price');
     const priceMap = {};
     (dbTables || []).forEach(t => priceMap[t.id] = Number(t.price) || 50);
@@ -167,19 +171,18 @@ app.post('/api/payments/initialize', async (req, res) => {
     let subtotal = 0;
     tableIds.forEach(id => { subtotal += (priceMap[id] || 50) * duration; });
     const totalAmountZAR = subtotal + bookingFee;
-    
-    // Ensure amount is a rounded integer (cents)
     const amountInCents = Math.round(totalAmountZAR * 100);
 
-    // Build hostname dynamically
-    const protocol = req.protocol;
+    // Force HTTPS scheme for Render / deployed environments
     const host = req.get('host');
+    const baseUrl = host.includes('localhost') ? `http://${host}` : `https://${host}`;
 
     const yocoPayload = JSON.stringify({
         amount: amountInCents,
         currency: 'ZAR',
-        cancelUrl: `${protocol}://${host}/`,
-        successUrl: `${protocol}://${host}/?payment=success&checkoutId={CHECKOUT_ID}`,
+        cancelUrl: `${baseUrl}/`,
+        // Encoded template token (%7BCHECKOUT_ID%7D) prevents invalid URL errors on Yoco's API validator
+        successUrl: `${baseUrl}/?payment=success&checkoutId=%7BCHECKOUT_ID%7D`,
         metadata: {
             tableIds: JSON.stringify(tableIds),
             date,
@@ -212,7 +215,7 @@ app.post('/api/payments/initialize', async (req, res) => {
         yocoRes.on('end', () => {
             try {
                 const responseData = JSON.parse(body);
-                console.log('Yoco API Response:', yocoRes.statusCode, responseData);
+                console.log('Yoco Response:', yocoRes.statusCode, responseData);
 
                 if (yocoRes.statusCode >= 200 && yocoRes.statusCode < 300 && responseData.redirectUrl) {
                     return res.json({
@@ -221,22 +224,16 @@ app.post('/api/payments/initialize', async (req, res) => {
                         checkoutId: responseData.id
                     });
                 } else {
-                    // Return the exact error response from Yoco
                     const errorMessage = responseData.errorMessage || responseData.message || responseData.displayMessage || 'Yoco initialization failed.';
                     return res.status(yocoRes.statusCode || 500).json({ error: errorMessage, details: responseData });
                 }
             } catch (e) {
-                console.error('JSON Parse Error from Yoco:', e.message);
                 return res.status(500).json({ error: 'Failed to parse payment gateway response.' });
             }
         });
     });
 
-    yocoReq.on('error', err => {
-        console.error('Yoco HTTPS Request Error:', err.message);
-        return res.status(500).json({ error: err.message });
-    });
-
+    yocoReq.on('error', err => res.status(500).json({ error: err.message }));
     yocoReq.write(yocoPayload);
     yocoReq.end();
 });
