@@ -1,6 +1,9 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
+const https = require('https');
+const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
@@ -11,6 +14,8 @@ app.use(express.static('public'));
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+const YOCO_SECRET_KEY = process.env.YOCO_SECRET_KEY;
 
 // Explicit route for admin dashboard page
 app.get('/admin', (req, res) => {
@@ -60,6 +65,146 @@ function escapeCSV(val) {
     const str = String(val).replace(/"/g, '""');
     return `"${str}"`;
 }
+
+// ==========================================
+// YOCO PAYMENT INTEGRATION ROUTES
+// ==========================================
+
+// 1. INITIALIZE YOCO CHECKOUT SESSION
+app.post('/api/payments/initialize', async (req, res) => {
+    const { tableIds, date, startTime, durationHours, slot, userName, phone, userId } = req.body;
+
+    if (!tableIds || !Array.isArray(tableIds) || tableIds.length === 0) {
+        return res.status(400).json({ error: 'Please select at least one table.' });
+    }
+
+    // Check conflicts
+    const targetRange = convertSlotToRange(slot, startTime, durationHours);
+    const { data: activeBookings, error: fetchErr } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('booking_date', date)
+        .in('table_id', tableIds)
+        .eq('is_active', true);
+
+    if (fetchErr) return res.status(500).json({ error: fetchErr.message });
+
+    for (const tableId of tableIds) {
+        const conflict = (activeBookings || []).find(b => {
+            if (Number(b.table_id) !== Number(tableId)) return false;
+            const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
+            return doSlotsOverlap(targetRange, existingRange);
+        });
+
+        if (conflict) {
+            return res.status(409).json({ error: `Table ${tableId} is no longer available for the selected slot.` });
+        }
+    }
+
+    // Calculate total price server-side
+    const { data: dbTables } = await supabase.from('pool_tables').select('id, price');
+    const priceMap = {};
+    (dbTables || []).forEach(t => priceMap[t.id] = Number(t.price) || 50);
+
+    const duration = Number(durationHours) || 1;
+    const bookingFee = 15 * tableIds.length;
+    let subtotal = 0;
+    tableIds.forEach(id => { subtotal += (priceMap[id] || 50) * duration; });
+    const totalAmountZAR = subtotal + bookingFee;
+    const amountInCents = Math.round(totalAmountZAR * 100);
+
+    // Request Checkout Session from Yoco
+    const yocoPayload = JSON.stringify({
+        amount: amountInCents,
+        currency: 'ZAR',
+        cancelUrl: `${req.protocol}://${req.get('host')}/`,
+        successUrl: `${req.protocol}://${req.get('host')}/?payment=success`,
+        metadata: {
+            tableIds: JSON.stringify(tableIds),
+            date,
+            startTime,
+            durationHours: duration,
+            slot,
+            userName,
+            phone,
+            userId,
+            bookingFee,
+            totalPrice: totalAmountZAR
+        }
+    });
+
+    const options = {
+        hostname: 'payments.yoco.com',
+        port: 443,
+        path: '/api/checkouts',
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${YOCO_SECRET_KEY}`,
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(yocoPayload)
+        }
+    };
+
+    const yocoReq = https.request(options, yocoRes => {
+        let body = '';
+        yocoRes.on('data', chunk => body += chunk);
+        yocoRes.on('end', () => {
+            try {
+                const responseData = JSON.parse(body);
+                if (responseData.redirectUrl) {
+                    res.json({
+                        success: true,
+                        redirectUrl: responseData.redirectUrl,
+                        checkoutId: responseData.id
+                    });
+                } else {
+                    res.status(500).json({ error: responseData.message || 'Yoco initialization failed.' });
+                }
+            } catch (e) {
+                res.status(500).json({ error: 'Failed to parse payment gateway response.' });
+            }
+        });
+    });
+
+    yocoReq.on('error', err => res.status(500).json({ error: err.message }));
+    yocoReq.write(yocoPayload);
+    yocoReq.end();
+});
+
+// 2. YOCO WEBHOOK ROUTE FOR ASYNCHRONOUS CONFIRMATION
+app.post('/api/payments/webhook', async (req, res) => {
+    const event = req.body;
+
+    if (event.type === 'payment.succeeded') {
+        const paymentData = event.payload;
+        const meta = paymentData.metadata || {};
+        const tableIds = typeof meta.tableIds === 'string' ? JSON.parse(meta.tableIds) : meta.tableIds;
+
+        if (tableIds && Array.isArray(tableIds)) {
+            const rows = tableIds.map(tableId => ({
+                ref_id: `YOC-${paymentData.id.slice(-6)}`,
+                table_id: Number(tableId),
+                booking_date: meta.date,
+                start_time: meta.startTime,
+                duration_hours: Number(meta.durationHours),
+                time_slot: meta.slot,
+                user_name: meta.userName,
+                phone: meta.phone,
+                user_identifier: meta.userId,
+                booking_fee: Number(meta.bookingFee) / tableIds.length,
+                total_price: Number(meta.totalPrice) / tableIds.length,
+                status: 'CONFIRMED',
+                payment_status: 'CARD_ONLINE',
+                payment_method: 'CARD',
+                is_active: true
+            }));
+
+            await supabase.from('bookings').insert(rows);
+        }
+    }
+
+    res.sendStatus(200);
+});
 
 // ==========================================
 // PUBLIC & CLIENT API ROUTES
@@ -152,7 +297,7 @@ app.get('/api/weekly-availability', async (req, res) => {
     res.json(result);
 });
 
-// MULTI-TABLE USER BOOKINGS (DIRECT INSERT)
+// MULTI-TABLE USER BOOKINGS (DIRECT INSERT FOR PAY AT COUNTER)
 app.post('/api/bookings/multi', async (req, res) => {
     const { tableIds, date, startTime, durationHours, slot, userName, phone, userId, bookingFeePerTable } = req.body;
 
@@ -321,7 +466,6 @@ app.post('/api/admin/action-item', async (req, res) => {
     const priceMap = {};
     (dbTables || []).forEach(t => priceMap[t.id] = Number(t.price) || 60);
 
-    // Safely parse duration as a whole integer to prevent bigint syntax errors
     const duration = Math.max(1, Math.ceil(Number(durationHours) || 1));
 
     let userName = 'Walk-In Customer';
@@ -332,7 +476,7 @@ app.post('/api/admin/action-item', async (req, res) => {
     if (actionType === 'MAINTENANCE') {
         userName = 'Maintenance Mode';
         status = 'MAINTENANCE';
-        pMethod = 'N/A'; // Default payment method to N/A for Maintenance Mode
+        pMethod = 'N/A';
         userIdentifier = 'SYSTEM_MAINTENANCE';
     } else if (actionType === 'RESERVED') {
         userName = 'League / Reserved';
@@ -348,7 +492,6 @@ app.post('/api/admin/action-item', async (req, res) => {
         if (actionType === 'WALK_IN') {
             calculatedPrice = price ? (price / tables.length) : (tableRate * duration);
         } else if (actionType === 'RESERVED') {
-            // Calculate total price using the default table price rate * duration
             calculatedPrice = tableRate * duration;
         }
 
