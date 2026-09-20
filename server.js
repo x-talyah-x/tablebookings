@@ -65,6 +65,63 @@ function escapeCSV(val) {
     return `"${str}"`;
 }
 
+// Helper to write bookings array directly to Supabase via Upsert
+async function recordBookingsFromMetadata(meta, checkoutOrPaymentId) {
+    let tableIds = meta.tableIds;
+    if (typeof tableIds === 'string') {
+        try {
+            tableIds = JSON.parse(tableIds);
+        } catch (e) {
+            tableIds = [];
+        }
+    }
+
+    if (!tableIds || !Array.isArray(tableIds) || tableIds.length === 0) {
+        return { success: false, reason: 'No table IDs found in metadata.' };
+    }
+
+    let formattedStartTime = meta.startTime || '12:00:00';
+    if (formattedStartTime.length === 5) {
+        formattedStartTime += ':00';
+    }
+
+    const yocoIdShort = checkoutOrPaymentId ? String(checkoutOrPaymentId).slice(-8) : Math.floor(100000 + Math.random() * 900000);
+    const baseRefId = `YOC-${yocoIdShort}`;
+
+    const bookingFeePerTable = Number(meta.bookingFee || 15) / tableIds.length;
+    const totalPricePerTable = Number(meta.totalPrice || 0) / tableIds.length;
+
+    const rows = tableIds.map((tableId, idx) => ({
+        ref_id: tableIds.length > 1 ? `${baseRefId}-${idx + 1}`.slice(0, 20) : baseRefId.slice(0, 20),
+        table_id: Number(tableId),
+        booking_date: meta.date,
+        start_time: formattedStartTime,
+        duration_hours: Number(meta.durationHours || 1),
+        time_slot: meta.slot || `${meta.startTime} - Slot`,
+        user_name: meta.userName || 'Online Customer',
+        phone: meta.phone || 'N/A',
+        user_identifier: meta.userId || 'GUEST',
+        booking_fee: bookingFeePerTable,
+        total_price: totalPricePerTable,
+        status: 'CONFIRMED',
+        payment_status: 'PAID',
+        payment_method: 'CARD',
+        is_active: true
+    }));
+
+    const { data, error } = await supabase
+        .from('bookings')
+        .upsert(rows, { onConflict: 'ref_id' })
+        .select();
+
+    if (error) {
+        console.error('Supabase Upsert Error:', error);
+        throw error;
+    }
+
+    return { success: true, data };
+}
+
 // ==========================================
 // YOCO PAYMENT INTEGRATION ROUTES
 // ==========================================
@@ -117,7 +174,7 @@ app.post('/api/payments/initialize', async (req, res) => {
         amount: amountInCents,
         currency: 'ZAR',
         cancelUrl: `${req.protocol}://${req.get('host')}/`,
-        successUrl: `${req.protocol}://${req.get('host')}/?payment=success`,
+        successUrl: `${req.protocol}://${req.get('host')}/?payment=success&checkoutId={CHECKOUT_ID}`,
         metadata: {
             tableIds: JSON.stringify(tableIds),
             date,
@@ -175,57 +232,13 @@ app.post('/api/payments/webhook', async (req, res) => {
     try {
         const event = req.body;
 
-        if (event && event.type === 'payment.succeeded') {
-            const paymentData = event.payload;
-            const meta = paymentData.metadata || {};
+        if (event && (event.type === 'payment.succeeded' || event.type === 'checkout.succeeded')) {
+            const payload = event.payload || event.data || event;
+            const meta = payload.metadata || {};
 
-            let tableIds = meta.tableIds;
-            if (typeof tableIds === 'string') {
-                try {
-                    tableIds = JSON.parse(tableIds);
-                } catch (e) {
-                    tableIds = [];
-                }
-            }
-
-            if (tableIds && Array.isArray(tableIds) && tableIds.length > 0) {
-                let formattedStartTime = meta.startTime || '12:00:00';
-                if (formattedStartTime.length === 5) {
-                    formattedStartTime += ':00';
-                }
-
-                const yocoIdShort = paymentData.id ? paymentData.id.slice(-8) : Math.floor(100000 + Math.random() * 900000);
-                const baseRefId = `YOC-${yocoIdShort}`;
-
-                const bookingFeePerTable = Number(meta.bookingFee || 15) / tableIds.length;
-                const totalPricePerTable = Number(meta.totalPrice || 0) / tableIds.length;
-
-                const rows = tableIds.map((tableId, idx) => ({
-                    ref_id: tableIds.length > 1 ? `${baseRefId}-${idx + 1}`.slice(0, 20) : baseRefId.slice(0, 20),
-                    table_id: Number(tableId),
-                    booking_date: meta.date,
-                    start_time: formattedStartTime,
-                    duration_hours: Number(meta.durationHours || 1),
-                    time_slot: meta.slot || `${meta.startTime} - Slot`,
-                    user_name: meta.userName || 'Online Customer',
-                    phone: meta.phone || 'N/A',
-                    user_identifier: meta.userId || 'GUEST',
-                    booking_fee: bookingFeePerTable,
-                    total_price: totalPricePerTable,
-                    status: 'CONFIRMED',
-                    payment_status: 'PAID',
-                    payment_method: 'CARD',
-                    is_active: true
-                }));
-
-                const { data, error } = await supabase.from('bookings').insert(rows).select();
-
-                if (error) {
-                    console.error('Supabase Webhook Insert Error:', error);
-                    return res.status(500).json({ error: error.message });
-                }
-
-                console.log('Successfully inserted booking rows via webhook:', data);
+            const result = await recordBookingsFromMetadata(meta, payload.id);
+            if (result.success) {
+                console.log('Successfully inserted/upserted booking rows via webhook:', result.data);
             }
         }
 
@@ -234,6 +247,46 @@ app.post('/api/payments/webhook', async (req, res) => {
         console.error('Webhook processing exception:', err.message);
         return res.status(500).json({ error: err.message });
     }
+});
+
+// 3. SYNCHRONOUS CHECKOUT VERIFICATION FALLBACK
+app.get('/api/payments/verify/:checkoutId', async (req, res) => {
+    const { checkoutId } = req.params;
+
+    const options = {
+        hostname: 'payments.yoco.com',
+        port: 443,
+        path: `/api/checkouts/${checkoutId}`,
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${YOCO_SECRET_KEY}`
+        }
+    };
+
+    const yocoReq = https.request(options, yocoRes => {
+        let body = '';
+        yocoRes.on('data', chunk => body += chunk);
+        yocoRes.on('end', async () => {
+            try {
+                const checkoutData = JSON.parse(body);
+
+                if (checkoutData.status === 'successful' || checkoutData.status === 'completed') {
+                    const meta = checkoutData.metadata || {};
+                    const result = await recordBookingsFromMetadata(meta, checkoutId);
+
+                    return res.json({ success: true, bookings: result.data });
+                } else {
+                    return res.status(400).json({ error: `Checkout status is currently ${checkoutData.status}` });
+                }
+            } catch (e) {
+                console.error('Checkout verification error:', e.message);
+                return res.status(500).json({ error: 'Failed to verify payment session.' });
+            }
+        });
+    });
+
+    yocoReq.on('error', err => res.status(500).json({ error: err.message }));
+    yocoReq.end();
 });
 
 // ==========================================
