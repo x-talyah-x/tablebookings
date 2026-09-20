@@ -6,6 +6,10 @@ const https = require('https');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
+
+// Trust reverse proxies (Render, Heroku, Nginx) so req.protocol accurately detects HTTPS
+app.set('trust proxy', 1);
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
@@ -127,10 +131,6 @@ async function recordBookingsFromMetadata(meta, checkoutOrPaymentId) {
 // ==========================================
 
 // 1. INITIALIZE YOCO CHECKOUT SESSION
-// Add this near top of server.js (after initializing express app)
-app.set('trust proxy', 1);
-
-// 1. INITIALIZE YOCO CHECKOUT SESSION
 app.post('/api/payments/initialize', async (req, res) => {
     const { tableIds, date, startTime, durationHours, slot, userName, phone, userId } = req.body;
 
@@ -138,7 +138,7 @@ app.post('/api/payments/initialize', async (req, res) => {
         return res.status(400).json({ error: 'Please select at least one table.' });
     }
 
-    // Check availability conflicts
+    // Check conflicts
     const targetRange = convertSlotToRange(slot, startTime, durationHours);
     const { data: activeBookings, error: fetchErr } = await supabase
         .from('bookings')
@@ -173,7 +173,7 @@ app.post('/api/payments/initialize', async (req, res) => {
     const totalAmountZAR = subtotal + bookingFee;
     const amountInCents = Math.round(totalAmountZAR * 100);
 
-    // Force HTTPS scheme for Render / deployed environments
+    // Force HTTPS scheme on remote deployments to satisfy Yoco API requirements
     const host = req.get('host');
     const baseUrl = host.includes('localhost') ? `http://${host}` : `https://${host}`;
 
@@ -181,8 +181,8 @@ app.post('/api/payments/initialize', async (req, res) => {
         amount: amountInCents,
         currency: 'ZAR',
         cancelUrl: `${baseUrl}/`,
-        // Encoded template token (%7BCHECKOUT_ID%7D) prevents invalid URL errors on Yoco's API validator
-        successUrl: `${baseUrl}/?payment=success&checkoutId=%7BCHECKOUT_ID%7D`,
+        // Keep {CHECKOUT_ID} unencoded so Yoco's template engine replaces it with the session ID
+        successUrl: `${baseUrl}/?payment=success&checkoutId={CHECKOUT_ID}`,
         metadata: {
             tableIds: JSON.stringify(tableIds),
             date,
@@ -261,12 +261,15 @@ app.post('/api/payments/webhook', async (req, res) => {
 });
 
 // 3. SYNCHRONOUS CHECKOUT VERIFICATION FALLBACK
-// 3. SYNCHRONOUS CHECKOUT VERIFICATION FALLBACK
 app.get('/api/payments/verify/:checkoutId', async (req, res) => {
-    const { checkoutId } = req.params;
+    let { checkoutId } = req.params;
 
+    checkoutId = decodeURIComponent(checkoutId);
     if (!checkoutId || checkoutId === '{CHECKOUT_ID}' || checkoutId === '%7BCHECKOUT_ID%7D') {
-        return res.status(400).json({ error: 'Invalid checkout ID parameter.' });
+        return res.status(400).json({ 
+            error: 'Invalid checkout ID parameter.',
+            message: 'Checkout ID was not populated by the gateway.' 
+        });
     }
 
     const options = {
@@ -287,7 +290,6 @@ app.get('/api/payments/verify/:checkoutId', async (req, res) => {
                 const checkoutData = JSON.parse(body);
                 console.log('Yoco Verify Response:', yocoRes.statusCode, checkoutData);
 
-                // Yoco checkout objects can contain status, checkoutStatus, or paymentStatus
                 const rawStatus = checkoutData.status || checkoutData.checkoutStatus || checkoutData.paymentStatus;
                 const status = rawStatus ? String(rawStatus).toLowerCase() : 'unknown';
 
@@ -313,9 +315,10 @@ app.get('/api/payments/verify/:checkoutId', async (req, res) => {
         console.error('Yoco Verify Network Error:', err.message);
         return res.status(500).json({ error: err.message });
     });
-    
+
     yocoReq.end();
 });
+
 // ==========================================
 // PUBLIC & CLIENT API ROUTES
 // ==========================================
