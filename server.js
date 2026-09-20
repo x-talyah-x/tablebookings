@@ -134,7 +134,7 @@ app.post('/api/payments/initialize', async (req, res) => {
         return res.status(400).json({ error: 'Please select at least one table.' });
     }
 
-    // Check conflicts
+    // Check availability conflicts in Supabase
     const targetRange = convertSlotToRange(slot, startTime, durationHours);
     const { data: activeBookings, error: fetchErr } = await supabase
         .from('bookings')
@@ -157,7 +157,7 @@ app.post('/api/payments/initialize', async (req, res) => {
         }
     }
 
-    // Calculate total price server-side
+    // Calculate total price
     const { data: dbTables } = await supabase.from('pool_tables').select('id, price');
     const priceMap = {};
     (dbTables || []).forEach(t => priceMap[t.id] = Number(t.price) || 50);
@@ -167,14 +167,19 @@ app.post('/api/payments/initialize', async (req, res) => {
     let subtotal = 0;
     tableIds.forEach(id => { subtotal += (priceMap[id] || 50) * duration; });
     const totalAmountZAR = subtotal + bookingFee;
+    
+    // Ensure amount is a rounded integer (cents)
     const amountInCents = Math.round(totalAmountZAR * 100);
 
-    // Request Checkout Session from Yoco
+    // Build hostname dynamically
+    const protocol = req.protocol;
+    const host = req.get('host');
+
     const yocoPayload = JSON.stringify({
         amount: amountInCents,
         currency: 'ZAR',
-        cancelUrl: `${req.protocol}://${req.get('host')}/`,
-        successUrl: `${req.protocol}://${req.get('host')}/?payment=success&checkoutId={CHECKOUT_ID}`,
+        cancelUrl: `${protocol}://${host}/`,
+        successUrl: `${protocol}://${host}/?payment=success&checkoutId={CHECKOUT_ID}`,
         metadata: {
             tableIds: JSON.stringify(tableIds),
             date,
@@ -207,22 +212,31 @@ app.post('/api/payments/initialize', async (req, res) => {
         yocoRes.on('end', () => {
             try {
                 const responseData = JSON.parse(body);
-                if (responseData.redirectUrl) {
-                    res.json({
+                console.log('Yoco API Response:', yocoRes.statusCode, responseData);
+
+                if (yocoRes.statusCode >= 200 && yocoRes.statusCode < 300 && responseData.redirectUrl) {
+                    return res.json({
                         success: true,
                         redirectUrl: responseData.redirectUrl,
                         checkoutId: responseData.id
                     });
                 } else {
-                    res.status(500).json({ error: responseData.message || 'Yoco initialization failed.' });
+                    // Return the exact error response from Yoco
+                    const errorMessage = responseData.errorMessage || responseData.message || responseData.displayMessage || 'Yoco initialization failed.';
+                    return res.status(yocoRes.statusCode || 500).json({ error: errorMessage, details: responseData });
                 }
             } catch (e) {
-                res.status(500).json({ error: 'Failed to parse payment gateway response.' });
+                console.error('JSON Parse Error from Yoco:', e.message);
+                return res.status(500).json({ error: 'Failed to parse payment gateway response.' });
             }
         });
     });
 
-    yocoReq.on('error', err => res.status(500).json({ error: err.message }));
+    yocoReq.on('error', err => {
+        console.error('Yoco HTTPS Request Error:', err.message);
+        return res.status(500).json({ error: err.message });
+    });
+
     yocoReq.write(yocoPayload);
     yocoReq.end();
 });
