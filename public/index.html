@@ -244,7 +244,7 @@
             </div>
 
             <form id="booking-form" class="space-y-3">
-                 <p class="text-xs text-gray-400 mt-0.5">I acknowledge that this is the fee to be paid at the counter upon arrival. Booking fee included. </p>
+                 <p class="text-xs text-gray-400 mt-0.5">I acknowledge that this is the fee to be paid via Yoco online card payment. </p>
                  <p class="text-xs text-gray-400 mt-0.5">I acknowledge that the booking will be cancelled if no show after 15 minutes.</p>
                 <input type="hidden" id="form-total-price">
                 <div>
@@ -259,7 +259,7 @@
                 <div class="flex gap-2 pt-2">
                     <button type="button" id="cancel-booking-btn" class="w-1/2 py-2.5 border border-gray-700 rounded-xl text-xs md:text-sm text-gray-300 active:bg-gray-800">Cancel</button>
                     <button type="submit" id="confirm-booking-btn" class="w-1/2 py-2.5 bg-felt-600 active:bg-felt-500 rounded-xl text-white font-bold text-xs md:text-sm flex justify-center items-center gap-1">
-                        <span>Confirm Reservation</span>
+                        <span>Pay via Yoco</span>
                     </button>
                 </div>
             </form>
@@ -310,6 +310,13 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
+
+            // Check for payment success URL query parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('payment') === 'success') {
+                alert('Payment successful! Your table booking has been confirmed.');
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
 
             document.getElementById('selected-date').value = appState.selectedDate;
             document.getElementById('start-time').value = appState.startTime;
@@ -525,22 +532,26 @@
             };
 
             try {
-                const res = await fetch('/api/bookings/multi', {
+                const res = await fetch('/api/payments/initialize', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
-                if (res.ok) {
-                    closeBookingModal();
-                    onFilterChange();
-                } else {
-                    const data = await res.json();
-                    alert(data.error || 'Failed to complete booking.');
+                const data = await res.json();
+                if (!res.ok) {
+                    alert(data.error || 'Failed to initialize payment.');
+                    return;
                 }
-            } catch (err) {
+
                 closeBookingModal();
-                onFilterChange();
+
+                if (data.redirectUrl) {
+                    window.location.href = data.redirectUrl;
+                }
+
+            } catch (err) {
+                alert('An error occurred while connecting to the payment server.');
             }
         }
 
