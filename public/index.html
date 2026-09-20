@@ -240,7 +240,6 @@
             </div>
 
             <form id="booking-form" class="space-y-3">
-                 <p class="text-xs text-gray-400 mt-0.5">I acknowledge that this is the fee to be paid via Yoco online card payment. </p>
                  <p class="text-xs text-gray-400 mt-0.5">I acknowledge that the booking will be cancelled if no show after 15 minutes.</p>
                 <input type="hidden" id="form-total-price">
                 <div>
@@ -255,7 +254,7 @@
                 <div class="flex gap-2 pt-2">
                     <button type="button" id="cancel-booking-btn" class="w-1/2 py-2.5 border border-gray-700 rounded-xl text-xs md:text-sm text-gray-300 active:bg-gray-800">Cancel</button>
                     <button type="submit" id="confirm-booking-btn" class="w-1/2 py-2.5 bg-felt-600 active:bg-felt-500 rounded-xl text-white font-bold text-xs md:text-sm flex justify-center items-center gap-1">
-                        <span>Pay via Yoco</span>
+                        <span>Confirm Booking</span>
                     </button>
                 </div>
             </form>
@@ -306,21 +305,6 @@
 
         window.addEventListener('DOMContentLoaded', async () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
-
-            const urlParams = new URLSearchParams(window.location.search);
-            const checkoutId = urlParams.get('checkoutId');
-
-            if (urlParams.get('payment') === 'success') {
-                if (checkoutId) {
-                    try {
-                        await fetch(`/api/payments/verify/${checkoutId}`);
-                    } catch (err) {
-                        console.error('Payment sync error:', err);
-                    }
-                }
-                alert('Payment successful! Your table booking has been confirmed.');
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
 
             document.getElementById('selected-date').value = appState.selectedDate;
             document.getElementById('start-time').value = appState.startTime;
@@ -544,7 +528,7 @@
             const submitBtn = document.getElementById('confirm-booking-btn');
             const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
-            submitBtn.innerHTML = `<span>Connecting...</span>`;
+            submitBtn.innerHTML = `<span>Booking...</span>`;
 
             const payload = {
                 tableIds: appState.selectedTables.map(t => t.id),
@@ -554,11 +538,12 @@
                 slot: getFormattedSlot(),
                 userName: document.getElementById('form-user-name').value,
                 phone: document.getElementById('form-user-phone').value,
-                userId: userId
+                userId: userId,
+                bookingFeePerTable: 15
             };
 
             try {
-                const res = await fetch('/api/payments/initialize', {
+                const res = await fetch('/api/bookings/multi', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -566,16 +551,18 @@
 
                 const data = await res.json();
 
-                if (res.ok && data.redirectUrl) {
-                    window.location.href = data.redirectUrl;
+                if (res.ok && data.success) {
+                    alert('Booking confirmed successfully!');
+                    closeBookingModal();
+                    clearSelection();
+                    loadData();
                 } else {
-                    alert(data.error || 'Payment initialization failed. Please try again.');
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalText;
+                    alert(data.error || 'Failed to complete booking. Please try again.');
                 }
             } catch (err) {
-                console.error('Error during checkout initialization:', err);
-                alert('Connection error while reaching payment gateway.');
+                console.error('Error during booking submission:', err);
+                alert('Connection error while saving booking.');
+            } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalText;
             }
