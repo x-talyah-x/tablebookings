@@ -61,14 +61,10 @@
         .zone-counter { background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; }
         .zone-door { background: rgba(245, 158, 11, 0.2); border: 1px dashed #f59e0b; }
 
-        .step-dot { width: 22px; height: 22px; border-radius: 999px; display:flex; align-items:center; justify-content:center; background:#111827; border:1px solid #374151; color:#6b7280; font-weight:700; font-size:10px; }
-        .step-dot.active { background:#059669; border-color:#10b981; color:#fff; }
-
         .availability-key { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
         .available-key { background: #10b981; }
         .booked-key { background: #ef4444; }
 
-        /* Custom Date and Time Inputs Styling */
         input[type="date"]::-webkit-calendar-picker-indicator,
         input[type="time"]::-webkit-calendar-picker-indicator {
             filter: invert(1);
@@ -110,7 +106,7 @@
 
             <!-- Mobile-Optimized Date, Time, and Duration Picker Controls -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <!-- Clean, Dedicated Date Picker -->
+                <!-- Date Picker -->
                 <div>
                     <label class="block text-[8px] uppercase font-bold text-gray-400 mb-2 tracking-wider">Select Date</label>
                     <div class="relative">
@@ -311,7 +307,6 @@
         window.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
 
-            // Check for payment success URL query parameter
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('payment') === 'success') {
                 alert('Payment successful! Your table booking has been confirmed.');
@@ -433,7 +428,7 @@
                 `;
 
                 if (isAvailable) {
-                    tableCard.onclick = () => toggleTableSelection(num, price);
+                    tableCard.addEventListener('click', () => toggleTableSelection({ id: num, price }));
                 }
 
                 wrapper.appendChild(tableCard);
@@ -441,87 +436,109 @@
             });
         }
 
-        function toggleTableSelection(tableId, basePrice) {
-            const index = appState.selectedTables.findIndex(t => t.id === tableId);
-            if (index >= 0) {
+        function toggleTableSelection(table) {
+            const index = appState.selectedTables.findIndex(t => t.id === table.id);
+            if (index > -1) {
                 appState.selectedTables.splice(index, 1);
             } else {
-                appState.selectedTables.push({ id: tableId, price: basePrice });
+                appState.selectedTables.push(table);
             }
-
-            updateSelectionUI();
             renderFloorPlan();
+            updateSelectionUI();
         }
 
         function clearSelection() {
             appState.selectedTables = [];
-            updateSelectionUI();
             renderFloorPlan();
+            updateSelectionUI();
         }
 
         function updateSelectionUI() {
             const count = appState.selectedTables.length;
-            const duration = parseInt(appState.durationHours);
-            const subtotal = appState.selectedTables.reduce((acc, t) => acc + (t.price * duration), 0);
+            const duration = Number(appState.durationHours);
+            const bookingFee = 15 * count;
+            
+            let subtotal = 0;
+            appState.selectedTables.forEach(t => subtotal += (t.price || 50) * duration);
+            const total = subtotal + bookingFee;
 
-            document.getElementById('mobile-selected-count').innerText = `${count} table${count !== 1 ? 's' : ''} selected`;
+            document.getElementById('mobile-selected-count').innerText = `${count} table${count === 1 ? '' : 's'} selected`;
+            document.getElementById('bottom-price').innerText = count > 0 ? `Total: R${total} (incl. R${bookingFee} fee)` : 'Choose one or more available tables';
             document.getElementById('mobile-multi-book-btn').disabled = count === 0;
 
             const previewSec = document.getElementById('selection-preview');
             const clearBtn = document.getElementById('clear-selection-btn');
-            
+
             if (count > 0) {
                 previewSec.classList.remove('hidden');
                 clearBtn.classList.remove('hidden');
-                document.getElementById('selection-title').innerText = `${count} table${count > 1 ? 's' : ''} selected (${duration} hr${duration > 1 ? 's' : ''})`;
-                document.getElementById('selection-total').innerText = `R${subtotal}`;
-                document.getElementById('bottom-price').innerText = `Total: R${subtotal} (${count} table${count > 1 ? 's' : ''})`;
+
+                document.getElementById('selection-title').innerText = `${count} Table${count === 1 ? '' : 's'} Selected`;
+                document.getElementById('selection-total').innerText = `R${total}`;
 
                 const chipsContainer = document.getElementById('selected-table-chips');
-                chipsContainer.innerHTML = '';
-                appState.selectedTables.forEach(t => {
-                    const chip = document.createElement('span');
-                    chip.className = 'bg-felt-950 text-felt-400 border border-felt-800 text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5';
-                    chip.innerHTML = `Table ${t.id} <button type="button" onclick="toggleTableSelection(${t.id}, ${t.price})" class="hover:text-white">✕</button>`;
-                    chipsContainer.appendChild(chip);
-                });
+                chipsContainer.innerHTML = appState.selectedTables.map(t => `
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-felt-950 border border-felt-800 text-xs text-felt-300 font-semibold">
+                        Table ${t.id} (R${(t.price || 50) * duration})
+                        <button onclick="toggleTableSelection({id: ${t.id}, price: ${t.price}})" class="text-gray-400 hover:text-white ml-1">×</button>
+                    </span>
+                `).join('');
             } else {
                 previewSec.classList.add('hidden');
                 clearBtn.classList.add('hidden');
-                document.getElementById('bottom-price').innerText = 'Choose one or more available tables';
             }
+        }
+
+        function onFilterChange() {
+            appState.selectedDate = document.getElementById('selected-date').value;
+            appState.startTime = document.getElementById('start-time').value;
+            appState.durationHours = parseInt(document.getElementById('duration-hours').value, 10);
+
+            updateSlotPreview();
+            appState.selectedTables = [];
+            updateSelectionUI();
+            loadData();
         }
 
         function openMultiBookingModal() {
             if (appState.selectedTables.length === 0) return;
 
-            const duration = parseInt(appState.durationHours);
-            const bookingFee = 15 * appState.selectedTables.length;
-            const subtotal = appState.selectedTables.reduce((acc, t) => acc + (t.price * duration), 0);
-            const totalPrice = subtotal + bookingFee;
-            const timeSlotStr = getFormattedSlot();
-            const tableListStr = appState.selectedTables.map(t => `#${t.id}`).join(', ');
+            const tableNums = appState.selectedTables.map(t => t.id).sort((a,b) => a - b).join(', ');
+            const duration = Number(appState.durationHours);
+            const count = appState.selectedTables.length;
+            const bookingFee = 15 * count;
 
-            document.getElementById('form-total-price').value = totalPrice;
-            document.getElementById('modal-table-num').innerText = tableListStr;
-            document.getElementById('modal-date').innerText = new Date(appState.selectedDate + 'T12:00:00').toLocaleDateString('en-ZA', {weekday:'short', day:'numeric', month:'short', year:'numeric'});
-            document.getElementById('modal-time-slot').innerText = timeSlotStr;
-            document.getElementById('modal-duration').innerText = `${duration} Hour${duration > 1 ? 's' : ''}`;
-            document.getElementById('modal-tables-count').innerText = `${appState.selectedTables.length} Table${appState.selectedTables.length > 1 ? 's' : ''}`;
+            let subtotal = 0;
+            appState.selectedTables.forEach(t => subtotal += (t.price || 50) * duration);
+            const total = subtotal + bookingFee;
+
+            document.getElementById('modal-table-num').innerText = tableNums;
+            document.getElementById('modal-date').innerText = appState.selectedDate;
+            document.getElementById('modal-time-slot').innerText = getFormattedSlot();
+            document.getElementById('modal-duration').innerText = `${duration} hour(s)`;
+            document.getElementById('modal-tables-count').innerText = `${count} table(s)`;
             document.getElementById('modal-subtotal').innerText = `R${subtotal}`;
             document.getElementById('modal-booking-fee').innerText = `+R${bookingFee}`;
-            document.getElementById('modal-total-price').innerText = `R${totalPrice}`;
-            
+            document.getElementById('modal-total-price').innerText = `R${total}`;
+            document.getElementById('form-total-price').value = total;
+
             document.getElementById('booking-modal').classList.remove('hidden');
-            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function closeBookingModal() {
+            document.getElementById('booking-modal').classList.add('hidden');
         }
 
         async function handleFormSubmit(e) {
             e.preventDefault();
-            const tableIds = appState.selectedTables.map(t => t.id);
+
+            const submitBtn = document.getElementById('confirm-booking-btn');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<span>Connecting...</span>`;
 
             const payload = {
-                tableIds,
+                tableIds: appState.selectedTables.map(t => t.id),
                 date: appState.selectedDate,
                 startTime: appState.startTime,
                 durationHours: appState.durationHours,
@@ -539,34 +556,20 @@
                 });
 
                 const data = await res.json();
-                if (!res.ok) {
-                    alert(data.error || 'Failed to initialize payment.');
-                    return;
-                }
 
-                closeBookingModal();
-
-                if (data.redirectUrl) {
+                if (res.ok && data.redirectUrl) {
                     window.location.href = data.redirectUrl;
+                } else {
+                    alert(data.error || 'Payment initialization failed. Please try again.');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
                 }
-
             } catch (err) {
-                alert('An error occurred while connecting to the payment server.');
+                console.error('Error during checkout initialization:', err);
+                alert('Connection error while reaching payment gateway.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
             }
-        }
-
-        function onFilterChange() {
-            appState.selectedDate = document.getElementById('selected-date').value;
-            appState.startTime = document.getElementById('start-time').value || getCurrentTimeHHMM();
-            appState.durationHours = document.getElementById('duration-hours').value;
-            appState.selectedTables = [];
-            updateSlotPreview();
-            updateSelectionUI();
-            loadData();
-        }
-
-        function closeBookingModal() { 
-            document.getElementById('booking-modal').classList.add('hidden'); 
         }
     </script>
 </body>
