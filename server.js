@@ -172,38 +172,73 @@ app.post('/api/payments/initialize', async (req, res) => {
 });
 
 // 2. YOCO WEBHOOK ROUTE FOR ASYNCHRONOUS CONFIRMATION
+// 2. YOCO WEBHOOK ROUTE FOR ASYNCHRONOUS CONFIRMATION
 app.post('/api/payments/webhook', async (req, res) => {
-    const event = req.body;
+    try {
+        const event = req.body;
 
-    if (event.type === 'payment.succeeded') {
-        const paymentData = event.payload;
-        const meta = paymentData.metadata || {};
-        const tableIds = typeof meta.tableIds === 'string' ? JSON.parse(meta.tableIds) : meta.tableIds;
+        if (event && event.type === 'payment.succeeded') {
+            const paymentData = event.payload;
+            const meta = paymentData.metadata || {};
 
-        if (tableIds && Array.isArray(tableIds)) {
-            const rows = tableIds.map(tableId => ({
-                ref_id: `YOC-${paymentData.id.slice(-6)}`,
-                table_id: Number(tableId),
-                booking_date: meta.date,
-                start_time: meta.startTime,
-                duration_hours: Number(meta.durationHours),
-                time_slot: meta.slot,
-                user_name: meta.userName,
-                phone: meta.phone,
-                user_identifier: meta.userId,
-                booking_fee: Number(meta.bookingFee) / tableIds.length,
-                total_price: Number(meta.totalPrice) / tableIds.length,
-                status: 'CONFIRMED',
-                payment_status: 'CARD_ONLINE',
-                payment_method: 'CARD',
-                is_active: true
-            }));
+            let tableIds = meta.tableIds;
+            if (typeof tableIds === 'string') {
+                try {
+                    tableIds = JSON.parse(tableIds);
+                } catch (e) {
+                    tableIds = [];
+                }
+            }
 
-            await supabase.from('bookings').insert(rows);
+            if (tableIds && Array.isArray(tableIds) && tableIds.length > 0) {
+                // Ensure HH:MM:SS format for PostgreSQL TIME column
+                let formattedStartTime = meta.startTime || '12:00:00';
+                if (formattedStartTime.length === 5) {
+                    formattedStartTime += ':00';
+                }
+
+                // Generate short ref_id (max 20 chars for database VARCHAR constraint)
+                const yocoIdShort = paymentData.id ? paymentData.id.slice(-8) : Math.floor(100000 + Math.random() * 900000);
+                const baseRefId = `YOC-${yocoIdShort}`;
+
+                const bookingFeePerTable = Number(meta.bookingFee || 15) / tableIds.length;
+                const totalPricePerTable = Number(meta.totalPrice || 0) / tableIds.length;
+
+                const rows = tableIds.map((tableId, idx) => ({
+                    // Ensure ref_id stays unique and under 20 chars
+                    ref_id: tableIds.length > 1 ? `${baseRefId}-${idx + 1}`.slice(0, 20) : baseRefId.slice(0, 20),
+                    table_id: Number(tableId),
+                    booking_date: meta.date,
+                    start_time: formattedStartTime,
+                    duration_hours: Number(meta.durationHours || 1),
+                    time_slot: meta.slot || `${meta.startTime} - Slot`,
+                    user_name: meta.userName || 'Online Customer',
+                    phone: meta.phone || 'N/A',
+                    user_identifier: meta.userId || 'GUEST',
+                    booking_fee: bookingFeePerTable,
+                    total_price: totalPricePerTable,
+                    status: 'CONFIRMED',
+                    payment_status: 'PAID',
+                    payment_method: 'CARD',
+                    is_active: true
+                }));
+
+                const { data, error } = await supabase.from('bookings').insert(rows).select();
+
+                if (error) {
+                    console.error('Supabase Webhook Insert Error:', error);
+                    return res.status(500).json({ error: error.message });
+                }
+
+                console.log('Successfully inserted booking rows via webhook:', data);
+            }
         }
-    }
 
-    res.sendStatus(200);
+        return res.status(200).json({ received: true });
+    } catch (err) {
+        console.error('Webhook processing exception:', err.message);
+        return res.status(500).json({ error: err.message });
+    }
 });
 
 // ==========================================
