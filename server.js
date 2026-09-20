@@ -261,8 +261,13 @@ app.post('/api/payments/webhook', async (req, res) => {
 });
 
 // 3. SYNCHRONOUS CHECKOUT VERIFICATION FALLBACK
+// 3. SYNCHRONOUS CHECKOUT VERIFICATION FALLBACK
 app.get('/api/payments/verify/:checkoutId', async (req, res) => {
     const { checkoutId } = req.params;
+
+    if (!checkoutId || checkoutId === '{CHECKOUT_ID}' || checkoutId === '%7BCHECKOUT_ID%7D') {
+        return res.status(400).json({ error: 'Invalid checkout ID parameter.' });
+    }
 
     const options = {
         hostname: 'payments.yoco.com',
@@ -280,26 +285,37 @@ app.get('/api/payments/verify/:checkoutId', async (req, res) => {
         yocoRes.on('end', async () => {
             try {
                 const checkoutData = JSON.parse(body);
+                console.log('Yoco Verify Response:', yocoRes.statusCode, checkoutData);
 
-                if (checkoutData.status === 'successful' || checkoutData.status === 'completed') {
+                // Yoco checkout objects can contain status, checkoutStatus, or paymentStatus
+                const rawStatus = checkoutData.status || checkoutData.checkoutStatus || checkoutData.paymentStatus;
+                const status = rawStatus ? String(rawStatus).toLowerCase() : 'unknown';
+
+                if (status === 'successful' || status === 'completed' || status === 'paid') {
                     const meta = checkoutData.metadata || {};
                     const result = await recordBookingsFromMetadata(meta, checkoutId);
 
-                    return res.json({ success: true, bookings: result.data });
+                    return res.json({ success: true, status: status, bookings: result.data });
                 } else {
-                    return res.status(400).json({ error: `Checkout status is currently ${checkoutData.status}` });
+                    return res.status(400).json({ 
+                        error: `Checkout status is currently ${status}`,
+                        details: checkoutData
+                    });
                 }
             } catch (e) {
-                console.error('Checkout verification error:', e.message);
-                return res.status(500).json({ error: 'Failed to verify payment session.' });
+                console.error('Checkout verification parse error:', e.message);
+                return res.status(500).json({ error: 'Failed to parse verification response from Yoco.' });
             }
         });
     });
 
-    yocoReq.on('error', err => res.status(500).json({ error: err.message }));
+    yocoReq.on('error', err => {
+        console.error('Yoco Verify Network Error:', err.message);
+        return res.status(500).json({ error: err.message });
+    });
+    
     yocoReq.end();
 });
-
 // ==========================================
 // PUBLIC & CLIENT API ROUTES
 // ==========================================
