@@ -116,6 +116,7 @@
                                 <th class="p-3">Table</th>
                                 <th class="p-3">Payment Method</th>
                                 <th class="p-3">Total Amount</th>
+                                <th class="p-3">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="admin-bookings-list" class="divide-y divide-gray-800/60"></tbody>
@@ -227,6 +228,82 @@
             </div>
 
             <button type="button" onclick="closePaymentModal()" class="w-full py-2 text-xs text-gray-400 hover:text-white transition-all">Cancel</button>
+        </div>
+    </div>
+
+    <!-- EDIT BOOKING MODAL -->
+    <div id="edit-booking-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-lg w-full space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold text-white">Edit Booking</h3>
+                <button onclick="closeEditModal()" class="text-gray-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form id="edit-booking-form" onsubmit="handleEditBookingSubmit(event)" class="space-y-4">
+                <input type="hidden" id="edit-booking-id">
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">User Name</label>
+                        <input type="text" id="edit-user-name" required class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Phone</label>
+                        <input type="text" id="edit-phone" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Table</label>
+                        <select id="edit-table-id" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Date</label>
+                        <input type="date" id="edit-booking-date" required class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Time Slot</label>
+                        <input type="text" id="edit-time-slot" required placeholder="e.g. 11:00 AM - 01:00 PM" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Total Price (R)</label>
+                        <input type="number" step="0.01" id="edit-total-price" required class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Payment Method</label>
+                        <select id="edit-payment-method" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
+                            <option value="">Unpaid / None</option>
+                            <option value="CASH">CASH</option>
+                            <option value="CARD">CARD</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Status</label>
+                        <select id="edit-status" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
+                            <option value="CONFIRMED">CONFIRMED</option>
+                            <option value="WALK_IN">WALK_IN</option>
+                            <option value="RESERVED">RESERVED</option>
+                            <option value="MAINTENANCE">MAINTENANCE</option>
+                            <option value="CANCELLED">CANCELLED</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 pt-2">
+                    <button type="submit" id="btn-save-edit" class="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-all text-sm">
+                        Save Changes
+                    </button>
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded-xl transition-all text-sm">
+                        Cancel
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -348,7 +425,7 @@
             const tablesContainer = document.getElementById('action-tables-container');
 
             rowsContainer.innerHTML = getLoaderHTML("Loading schedule timeline...");
-            bookingsContainer.innerHTML = `<tr><td colspan="7" class="p-8 text-center relative">${getLoaderHTML("Loading bookings...")}</td></tr>`;
+            bookingsContainer.innerHTML = `<tr><td colspan="8" class="p-8 text-center relative">${getLoaderHTML("Loading bookings...")}</td></tr>`;
             tablesContainer.innerHTML = getLoaderHTML("Fetching tables...");
             if (typeof lucide !== 'undefined') lucide.createIcons();
 
@@ -731,7 +808,7 @@
             container.innerHTML = '';
 
             if (!bookings || bookings.length === 0) {
-                container.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-500">No bookings found for this date.</td></tr>`;
+                container.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-gray-500">No bookings found for this date.</td></tr>`;
                 return;
             }
 
@@ -761,13 +838,86 @@
                     <td class="p-3 font-mono text-xs text-amber-400">${b.ref_id || 'N/A'}</td>
                     <td class="p-3 font-semibold text-white">${b.user_name || 'N/A'}</td>
                     <td class="p-3 text-xs text-gray-300">${b.phone || 'N/A'}</td>
-                    <td class="p-3 text-xs text-gray-300">${b.time_slot || b.slot}</td>
+                    <td class="p-3 text-xs text-gray-300">${b.time_slot || b.slot || ''}</td>
                     <td class="p-3">Table ${b.table_id}</td>
                     <td class="p-3">${methodBadge}</td>
                     <td class="p-3 font-semibold text-felt-400">R${Number(b.total_price || 0).toFixed(2)}</td>
+                    <td class="p-3">
+                        <button onclick="openEditModal('${b.id}')" class="px-3 py-1 bg-gray-800 hover:bg-amber-500 hover:text-black text-amber-400 font-bold text-xs rounded-lg transition-all flex items-center gap-1">
+                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Edit
+                        </button>
+                    </td>
                 `;
                 container.appendChild(tr);
             });
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function openEditModal(bookingId) {
+            const booking = appState.allDateBookings.find(b => String(b.id) === String(bookingId));
+            if (!booking) return;
+
+            const tableSelect = document.getElementById('edit-table-id');
+            tableSelect.innerHTML = appState.tables.map(t => 
+                `<option value="${t.id}" ${Number(t.id) === Number(booking.table_id) ? 'selected' : ''}>Table ${t.id}</option>`
+            ).join('');
+
+            document.getElementById('edit-booking-id').value = booking.id;
+            document.getElementById('edit-user-name').value = booking.user_name || '';
+            document.getElementById('edit-phone').value = booking.phone || '';
+            document.getElementById('edit-booking-date').value = booking.booking_date || appState.selectedDate;
+            document.getElementById('edit-time-slot').value = booking.time_slot || '';
+            document.getElementById('edit-total-price').value = booking.total_price || 0;
+            document.getElementById('edit-payment-method').value = booking.payment_method || '';
+            document.getElementById('edit-status').value = booking.status || 'CONFIRMED';
+
+            document.getElementById('edit-booking-modal').classList.remove('hidden');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-booking-modal').classList.add('hidden');
+        }
+
+        async function handleEditBookingSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-booking-id').value;
+            const saveBtn = document.getElementById('btn-save-edit');
+            saveBtn.disabled = true;
+
+            const payload = {
+                user_name: document.getElementById('edit-user-name').value,
+                phone: document.getElementById('edit-phone').value,
+                table_id: document.getElementById('edit-table-id').value,
+                booking_date: document.getElementById('edit-booking-date').value,
+                time_slot: document.getElementById('edit-time-slot').value,
+                total_price: document.getElementById('edit-total-price').value,
+                payment_method: document.getElementById('edit-payment-method').value || null,
+                status: document.getElementById('edit-status').value
+            };
+
+            try {
+                const res = await fetch(`/api/admin/bookings/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    showToast('Booking updated successfully!', 'success');
+                    closeEditModal();
+                    await loadAdminData();
+                } else {
+                    const data = await res.json();
+                    showAlertModal(data.error || 'Failed to update booking.', 'Update Failed', 'error');
+                }
+            } catch (err) {
+                console.error('Error updating booking:', err);
+                showToast('Network error while updating booking.', 'error');
+            } finally {
+                saveBtn.disabled = false;
+            }
         }
 
         async function updatePaymentMethod(bookingId, paymentMethod) {
