@@ -532,6 +532,60 @@ app.post('/api/admin/bookings', async (req, res) => {
     res.status(201).json(data[0]);
 });
 
+// UPDATE FULL BOOKING (ADMIN EDIT)
+app.put('/api/admin/bookings/:id', async (req, res) => {
+    const { id } = req.params;
+    const { user_name, phone, table_id, booking_date, start_time, duration_hours, time_slot, payment_method, total_price, status, is_active } = req.body;
+
+    // Check schedule overlaps with active bookings on the target date (ignoring current booking)
+    if (booking_date && table_id && time_slot) {
+        const targetRange = convertSlotToRange(time_slot, start_time, duration_hours);
+
+        const { data: activeBookings, error: fetchErr } = await supabase
+            .from('bookings')
+            .select('*')
+            .eq('booking_date', booking_date)
+            .eq('table_id', Number(table_id))
+            .eq('is_active', true)
+            .neq('id', id);
+
+        if (fetchErr) return res.status(500).json({ error: fetchErr.message });
+
+        const conflict = (activeBookings || []).find(b => {
+            const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
+            return doSlotsOverlap(targetRange, existingRange);
+        });
+
+        if (conflict) {
+            return res.status(409).json({ error: `Table ${table_id} is already occupied during ${time_slot} on ${booking_date}.` });
+        }
+    }
+
+    const updates = {};
+    if (user_name !== undefined) updates.user_name = user_name;
+    if (phone !== undefined) updates.phone = phone;
+    if (table_id !== undefined) updates.table_id = Number(table_id);
+    if (booking_date !== undefined) updates.booking_date = booking_date;
+    if (start_time !== undefined) updates.start_time = start_time;
+    if (duration_hours !== undefined) updates.duration_hours = Number(duration_hours);
+    if (time_slot !== undefined) updates.time_slot = time_slot;
+    if (payment_method !== undefined) updates.payment_method = payment_method;
+    if (total_price !== undefined) updates.total_price = Number(total_price);
+    if (status !== undefined) updates.status = status;
+    if (is_active !== undefined) updates.is_active = is_active;
+
+    const { data, error } = await supabase
+        .from('bookings')
+        .update(updates)
+        .eq('id', id)
+        .select();
+
+    if (error) return res.status(500).json({ error: error.message });
+    if (!data || data.length === 0) return res.status(404).json({ error: 'Booking not found.' });
+
+    res.json({ success: true, booking: data[0] });
+});
+
 // UPDATE BOOKING STATUS (CANCEL, CONFIRM, COMPLETE, EXPIRE)
 app.patch('/api/admin/bookings/:id/status', async (req, res) => {
     const { id } = req.params;
