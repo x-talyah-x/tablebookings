@@ -18,6 +18,8 @@
         }
     </script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Yoco SDK -->
+    <script src="https://js.yoco.com/sdk/v1/yoco-sdk-web.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Outfit', sans-serif; background-color: #0b0f17; color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
@@ -104,9 +106,8 @@
                 </div>
             </div>
 
-            <!-- Mobile-Optimized Date, Time, and Duration Picker Controls -->
+            <!-- Mobile-Optimized Controls -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <!-- Date Picker -->
                 <div>
                     <label class="block text-[8px] uppercase font-bold text-gray-400 mb-2 tracking-wider">Select Date</label>
                     <div class="relative">
@@ -114,7 +115,6 @@
                     </div>
                 </div>
 
-                <!-- Custom Start Time -->
                 <div>
                     <label class="block text-[8px] uppercase font-bold text-gray-400 mb-2 tracking-wider">Start Time</label>
                     <div class="relative">
@@ -122,7 +122,6 @@
                     </div>
                 </div>
 
-                <!-- Duration -->
                 <div>
                     <label class="block text-[8px] uppercase font-bold text-gray-400 mb-2 tracking-wider">Duration (1hr Block Slots)</label>
                     <select id="duration-hours" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm font-semibold text-white focus:outline-none focus:border-felt-500">
@@ -135,7 +134,6 @@
                 </div>
             </div>
 
-            <!-- Booking Slot Summary Preview -->
             <div class="mt-4 flex items-center justify-between rounded-xl bg-felt-950/60 border border-felt-800/60 px-3 py-2.5">
                 <div class="flex items-center gap-2">
                     <i data-lucide="calendar-clock" class="w-4 h-4 text-felt-400"></i>
@@ -208,13 +206,13 @@
                 <p id="bottom-price" class="text-[10px] text-gray-500 mt-0.5">Choose one or more available tables</p>
             </div>
             <button id="mobile-multi-book-btn" disabled class="shrink-0 px-5 md:px-7 py-3 bg-felt-600 hover:bg-felt-500 active:bg-felt-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-white font-bold text-xs md:text-sm transition-all">
-                Book Selected
+                Book & Pay
                 <i data-lucide="arrow-right" class="inline-block w-4 h-4 ml-1 align-middle"></i>
             </button>
         </div>
     </div>
 
-    <!-- Modal: Book a Table Checkout Modal -->
+    <!-- Modal: Checkout Modal with Yoco Integration -->
     <div id="booking-modal" class="fixed inset-0 bg-black/80 z-50 flex items-end md:items-center justify-center p-0 md:p-4 hidden transition-opacity">
         <div class="bg-gray-900 border-t md:border border-gray-800 rounded-t-3xl md:rounded-2xl max-w-md w-full p-5 md:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div class="w-12 h-1 bg-gray-700 rounded-full mx-auto md:hidden"></div>
@@ -222,7 +220,7 @@
             <div class="flex justify-between items-start">
                 <div>
                     <h3 class="text-base md:text-lg font-bold text-white">Book Table(s): <span id="modal-table-num" class="text-felt-400"></span></h3>
-                    <p class="text-xs text-gray-400 mt-0.5">Your booking information</p>
+                    <p class="text-xs text-gray-400 mt-0.5">Enter details to complete online payment</p>
                 </div>
                 <button type="button" onclick="closeBookingModal()" class="text-gray-400 hover:text-white p-1">
                     <i data-lucide="x" class="w-5 h-5"></i>
@@ -240,8 +238,7 @@
             </div>
 
             <form id="booking-form" class="space-y-3">
-                <p class="text-xs text-gray-400 mt-0.5">I acknowledge that this is the fee to pay upon arrival at the counter. Booking/Reversation fee included. </p>
-                 <p class="text-xs text-gray-400 mt-0.5">I acknowledge that the booking will be cancelled if no show after 15 minutes.</p>
+                <p class="text-xs text-gray-400 mt-0.5">Secure payment via Yoco. Cancellation applies after 15 minutes past start time.</p>
                 <input type="hidden" id="form-total-price">
                 <div>
                     <label class="block text-[10px] uppercase font-semibold text-gray-400 mb-1">Full Name</label>
@@ -255,7 +252,7 @@
                 <div class="flex gap-2 pt-2">
                     <button type="button" id="cancel-booking-btn" class="w-1/2 py-2.5 border border-gray-700 rounded-xl text-xs md:text-sm text-gray-300 active:bg-gray-800">Cancel</button>
                     <button type="submit" id="confirm-booking-btn" class="w-1/2 py-2.5 bg-felt-600 active:bg-felt-500 rounded-xl text-white font-bold text-xs md:text-sm flex justify-center items-center gap-1">
-                        <span>Confirm Booking</span>
+                        <span>Pay & Confirm</span>
                     </button>
                 </div>
             </form>
@@ -265,6 +262,11 @@
     <script>
         let userId = localStorage.getItem('cuecraft_user_id') || 'usr_' + Math.random().toString(36).substr(2, 9);
         localStorage.setItem('cuecraft_user_id', userId);
+
+        // Initialize Yoco SDK (replace with your Yoco Public Key)
+        const yoco = new window.YocoSDK({
+            publicKey: 'pk_test_ed3bd354ee110a12e3e' 
+        });
 
         function getCurrentTimeHHMM() {
             const now = new Date();
@@ -523,50 +525,70 @@
             document.getElementById('booking-modal').classList.add('hidden');
         }
 
-        async function handleFormSubmit(e) {
+        function handleFormSubmit(e) {
             e.preventDefault();
 
             const submitBtn = document.getElementById('confirm-booking-btn');
-            const originalText = submitBtn.innerHTML;
+            const totalInRands = parseFloat(document.getElementById('form-total-price').value);
+            const totalInCents = Math.round(totalInRands * 100);
+
             submitBtn.disabled = true;
-            submitBtn.innerHTML = `<span>Booking...</span>`;
+            submitBtn.innerHTML = `<span>Processing...</span>`;
 
-            const payload = {
-                tableIds: appState.selectedTables.map(t => t.id),
-                date: appState.selectedDate,
-                startTime: appState.startTime,
-                durationHours: appState.durationHours,
-                slot: getFormattedSlot(),
-                userName: document.getElementById('form-user-name').value,
-                phone: document.getElementById('form-user-phone').value,
-                userId: userId,
-                bookingFeePerTable: 15
-            };
+            // Open Yoco Popup
+            yoco.showPopup({
+                amountInCents: totalInCents,
+                currency: 'ZAR',
+                name: "Tee's Cueflix Booking",
+                description: `Tables: ${appState.selectedTables.map(t => t.id).join(', ')}`,
+                callback: async function (result) {
+                    if (result.error) {
+                        alert("Payment Failed: " + result.error.message);
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = `<span>Pay & Confirm</span>`;
+                        return;
+                    }
 
-            try {
-                const res = await fetch('/api/bookings/multi', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+                    // Token generated successfully -> Submit to backend
+                    const payload = {
+                        token: result.id,
+                        tableIds: appState.selectedTables.map(t => t.id),
+                        date: appState.selectedDate,
+                        startTime: appState.startTime,
+                        durationHours: appState.durationHours,
+                        slot: getFormattedSlot(),
+                        userName: document.getElementById('form-user-name').value,
+                        phone: document.getElementById('form-user-phone').value,
+                        userId: userId,
+                        bookingFeePerTable: 15
+                    };
 
-                const data = await res.json();
+                    try {
+                        const res = await fetch('/api/bookings/multi-pay', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
 
-                if (res.ok && data.success) {
-                    alert('Booking confirmed successfully!');
-                    closeBookingModal();
-                    clearSelection();
-                    loadData();
-                } else {
-                    alert(data.error || 'Failed to complete booking. Please try again.');
+                        const data = await res.json();
+
+                        if (res.ok && data.success) {
+                            alert('Payment successful and booking confirmed!');
+                            closeBookingModal();
+                            clearSelection();
+                            loadData();
+                        } else {
+                            alert(data.error || 'Payment or booking execution failed.');
+                        }
+                    } catch (err) {
+                        console.error('Error during payment backend submission:', err);
+                        alert('Connection error while saving payment and booking.');
+                    } finally {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = `<span>Pay & Confirm</span>`;
+                    }
                 }
-            } catch (err) {
-                console.error('Error during booking submission:', err);
-                alert('Connection error while saving booking.');
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalText;
-            }
+            });
         }
     </script>
 </body>
