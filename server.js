@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
-
+const { Resend } = require('resend');
 const app = express();
 
 // Trust reverse proxies (Render, Heroku, Nginx) so req.protocol accurately detects HTTPS
@@ -16,6 +16,71 @@ app.use(express.static('public'));
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Notification Clients
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
+
+// Notification Dispatch Function
+async function sendBookingConfirmation(bookingDetails) {
+    const { ref_id, user_name, phone, user_identifier, booking_date, time_slot, table_ids, total_price } = bookingDetails;
+    const email = user_identifier && user_identifier.includes('@') ? user_identifier : null;
+
+    // Fetch table details (including names) for all booked table IDs
+  let tableDisplayNames = Array.isArray(table_ids) ? table_ids.map(id => `Table ${id}`).join(', ') : `Table ${table_ids}`;
+    if (Array.isArray(table_ids) && table_ids.length > 0) {
+        const { data: dbTables } = await supabase
+            .from('pool_tables')
+            .select('id, name')
+            .in('id', table_ids);
+
+        if (dbTables && dbTables.length > 0) {
+            const nameMap = {};
+            dbTables.forEach(t => {
+                // Checks if name is custom or standard default (e.g. "Table 1") to prevent duplicate "Table 1 (Table 1)" strings
+                const isDefaultName = /^table\s*\d+$/i.test(t.name.trim());
+                nameMap[t.id] = isDefaultName ? t.name : `Table ${t.id} (${t.name})`;
+            });
+            tableDisplayNames = table_ids.map(id => nameMap[id] || `Table ${id}`).join(', ');
+        }
+    }
+    // Email Notification via Resend
+    if (resend && email) {
+        try {
+            const { data, error } = await resend.emails.send({
+                from: "Tee's Cueflix <onboarding@resend.dev>",
+                to: [email],
+                subject: `🎱 Booking Confirmation - Ref: ${ref_id}`,
+                html: `
+                    <div style="font-family: Arial, sans-serif; background-color: #0b0f17; color: #ffffff; padding: 24px; border-radius: 12px; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #10b981; margin-top: 0;">Booking Confirmed!</h2>
+                        <p>Hi <strong>${user_name}</strong>,</p>
+                        <p>Thank you for reserving with Tee's Cueflix. Here are your booking details:</p>
+                        <table style="width: 100%; border-collapse: collapse; margin-top: 15px; color: #ffffff;">
+                            <tr style="border-bottom: 1px solid #1f2937;"><td style="padding: 8px 0; font-weight: bold;">Reference ID:</td><td style="padding: 8px 0;">${ref_id}</td></tr>
+                            <tr style="border-bottom: 1px solid #1f2937;"><td style="padding: 8px 0; font-weight: bold;">Date:</td><td style="padding: 8px 0;">${booking_date}</td></tr>
+                            <tr style="border-bottom: 1px solid #1f2937;"><td style="padding: 8px 0; font-weight: bold;">Time Slot:</td><td style="padding: 8px 0;">${time_slot}</td></tr>
+                            <tr style="border-bottom: 1px solid #1f2937;"><td style="padding: 8px 0; font-weight: bold;">Table(s):</td><td style="padding: 8px 0;">${tableDisplayNames}</td></tr>
+                            <tr style="border-bottom: 1px solid #1f2937;"><td style="padding: 8px 0; font-weight: bold;">Total Paid:</td><td style="padding: 8px 0; color: #10b981; font-weight: bold;">R${total_price}</td></tr>
+                        </table>
+                        
+                        <br/>
+                         <p>Please have your bookings details ready to show at the counter.</p>
+                        <p style="color: #9ca3af; font-size: 13px;">We look forward to seeing you on the felt!</p>
+                    </div>
+                `
+            });
+
+            if (error) {
+                console.error('Resend API returned error:', error);
+            } else {
+                console.log(`Confirmation Email sent successfully to ${email}`);
+            }
+        } catch (err) {
+            console.error('Error sending confirmation email:', err);
+        }
+    }
+}
 
 // Explicit route for admin dashboard page
 app.get('/admin', (req, res) => {
@@ -81,7 +146,10 @@ app.get('/api/tables', async (req, res) => {
 app.get('/api/tables/available', async (req, res) => {
     const { date, startTime, duration } = req.query;
 
-    const { data: tables, error: tablesErr } = await supabase.from('pool_tables').select('*').order('id');
+    const { data: tables, error: tablesErr } = await supabase
+        .from('pool_tables')
+        .select('*')
+        .order('id');
     if (tablesErr) return res.status(500).json({ error: tablesErr.message });
 
     const { data: activeBookings, error: bookingsErr } = await supabase
@@ -94,16 +162,23 @@ app.get('/api/tables/available', async (req, res) => {
 
     const targetRange = convertSlotToRange(null, startTime, duration);
 
-    const availableTables = (tables || []).filter(t => {
-        const tableBookings = activeBookings.filter(b => Number(b.table_id) === Number(t.id));
-        const hasConflict = tableBookings.some(b => {
-            const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
-            return doSlotsOverlap(targetRange, existingRange);
-        });
-        return !hasConflict;
-    });
+    const availableTables = (tables || [])
+        .filter(t => {
+            const tableBookings = activeBookings.filter(b => Number(b.table_id) === Number(t.id));
+            const hasConflict = tableBookings.some(b => {
+                const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
+                return doSlotsOverlap(targetRange, existingRange);
+            });
+            return !hasConflict;
+        })
+        .map(t => ({
+            id: t.id,
+            name: t.name || `Table ${t.table_number || t.id}`, // Fallback if name isn't a dedicated column
+            number: t.table_number || t.number || t.id,
+            ...t // Includes any additional original fields
+        }));
 
-    res.json(availableTables);
+   res.json(availableTables);
 });
 
 // WEEKLY AVAILABILITY MATRIX
@@ -294,7 +369,7 @@ app.post('/api/payments/yoco/create-checkout', async (req, res) => {
     }
 });
 
-// 2. Redirect Success Callback (Queries DB by refId)
+// 2. Redirect Success Callback (Queries DB by refId & Triggers Notifications)
 app.get('/api/payments/yoco/success', async (req, res) => {
     const { refId } = req.query;
 
@@ -315,6 +390,8 @@ app.get('/api/payments/yoco/success', async (req, res) => {
             return res.redirect('/?payment=failed');
         }
 
+        const alreadyConfirmed = pendingBookings[0].status === 'CONFIRMED';
+
         // Confirm status and set active
         const { error: updateErr } = await supabase
             .from('bookings')
@@ -328,6 +405,24 @@ app.get('/api/payments/yoco/success', async (req, res) => {
         if (updateErr) {
             console.error('Error updating booking status:', updateErr);
             return res.redirect('/?payment=failed');
+        }
+
+        // Send Email Notification if not already sent
+        if (!alreadyConfirmed) {
+            const first = pendingBookings[0];
+            const tableIds = pendingBookings.map(b => b.table_id);
+            const totalPrice = pendingBookings.reduce((sum, b) => sum + (Number(b.total_price) || 0), 0);
+
+            sendBookingConfirmation({
+                ref_id: refId,
+                user_name: first.user_name,
+                phone: first.phone,
+                user_identifier: first.user_identifier,
+                booking_date: first.booking_date,
+                time_slot: first.time_slot,
+                table_ids: tableIds,
+                total_price: totalPrice
+            });
         }
 
         return res.redirect('/?payment=success');
@@ -349,14 +444,36 @@ app.post('/api/payments/yoco/webhook', async (req, res) => {
             const refId = metadata.ref_id;
 
             if (refId) {
-                await supabase
+                const { data: bookings } = await supabase
                     .from('bookings')
-                    .update({
-                        status: 'CONFIRMED',
-                        payment_status: 'PAID',
-                        is_active: true
-                    })
+                    .select('*')
                     .eq('ref_id', refId);
+
+                if (bookings && bookings.length > 0 && bookings[0].status !== 'CONFIRMED') {
+                    await supabase
+                        .from('bookings')
+                        .update({
+                            status: 'CONFIRMED',
+                            payment_status: 'PAID',
+                            is_active: true
+                        })
+                        .eq('ref_id', refId);
+
+                    const first = bookings[0];
+                    const tableIds = bookings.map(b => b.table_id);
+                    const totalPrice = bookings.reduce((sum, b) => sum + (Number(b.total_price) || 0), 0);
+
+                    sendBookingConfirmation({
+                        ref_id: refId,
+                        user_name: first.user_name,
+                        phone: first.phone,
+                        user_identifier: first.user_identifier,
+                        booking_date: first.booking_date,
+                        time_slot: first.time_slot,
+                        table_ids: tableIds,
+                        total_price: totalPrice
+                    });
+                }
             }
         }
 
