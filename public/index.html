@@ -512,7 +512,7 @@
             const tableNums = appState.selectedTables.map(t => t.id).sort((a,b) => a - b).join(', ');
             const duration = Number(appState.durationHours);
             const count = appState.selectedTables.length;
-            const bookingFee = 20 * count;
+            const bookingFee = 15 * count * duration;
 
             let subtotal = 0;
             appState.selectedTables.forEach(t => subtotal += (t.price || 50) * duration);
