@@ -103,7 +103,7 @@
                 </div>
             </div>
 
-            <!-- Mobile-Optimized Date, Time, and Duration Picker Controls -->
+            <!-- Date, Time, and Duration Controls -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <!-- Date Picker -->
                 <div>
@@ -207,7 +207,7 @@
                 <p id="bottom-price" class="text-[10px] text-gray-500 mt-0.5">Choose one or more available tables</p>
             </div>
             <button id="mobile-multi-book-btn" disabled class="shrink-0 px-5 md:px-7 py-3 bg-felt-600 hover:bg-felt-500 active:bg-felt-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-white font-bold text-xs md:text-sm transition-all">
-                Book Selected
+                Proceed to Checkout
                 <i data-lucide="arrow-right" class="inline-block w-4 h-4 ml-1 align-middle"></i>
             </button>
         </div>
@@ -234,14 +234,12 @@
                 <div class="flex justify-between text-gray-400"><span>Duration:</span> <span id="modal-duration" class="text-white font-medium">--</span></div>
                 <div class="flex justify-between text-gray-400"><span>Tables:</span> <span id="modal-tables-count" class="text-white font-medium">--</span></div>
                 <div class="flex justify-between text-gray-400"><span>Subtotal:</span> <span id="modal-subtotal" class="text-white font-medium">R0</span></div>
-                <div class="flex justify-between text-gray-400"><span>Booking/Reservation Fee:</span> <span class="text-amber-400" id="modal-booking-fee">+R15</span></div>
+                <div class="flex justify-between text-gray-400"><span>Reservation Fee:</span> <span class="text-amber-400" id="modal-booking-fee">+R20</span></div>
                 <div class="border-t border-gray-800 pt-1.5 flex justify-between font-bold text-sm text-white"><span>Total Due:</span> <span id="modal-total-price" class="text-felt-400">R0</span></div>
             </div>
 
-            <form id="booking-form" class="space-y-3">
-                <p class="text-xs text-gray-400 mt-0.5">I acknowledge that this is the fee to pay upon arrival at the counter. Booking/Reversation fee included. </p>
-                 <p class="text-xs text-gray-400 mt-0.5">I acknowledge that the booking will be cancelled if no show after 15 minutes.</p>
-                <input type="hidden" id="form-total-price">
+            <form id="booking-form" class="space-y-3" onsubmit="event.preventDefault(); handleYocoPayment();">
+                <p class="text-xs text-gray-400 mt-0.5">Online payment is required to confirm your reservation via YOCO.</p>
                 <div>
                     <label class="block text-[10px] uppercase font-semibold text-gray-400 mb-1">Full Name</label>
                     <input type="text" id="form-user-name" required placeholder="John Doe" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
@@ -252,9 +250,12 @@
                 </div>
 
                 <div class="flex gap-2 pt-2">
-                    <button type="button" id="cancel-booking-btn" class="w-1/2 py-2.5 border border-gray-700 rounded-xl text-xs md:text-sm text-gray-300 active:bg-gray-800">Cancel</button>
-                    <button type="submit" id="confirm-booking-btn" class="w-1/2 py-2.5 bg-felt-600 active:bg-felt-500 rounded-xl text-white font-bold text-xs md:text-sm flex justify-center items-center gap-1">
-                        <span>Confirm Booking</span>
+                    <button type="button" id="cancel-booking-btn" class="w-1/3 py-2.5 border border-gray-700 rounded-xl text-xs md:text-sm text-gray-300 active:bg-gray-800">
+                        Cancel
+                    </button>
+                    <button type="submit" id="pay-yoco-btn" class="w-2/3 py-2.5 bg-felt-600 hover:bg-felt-500 active:bg-felt-500 rounded-xl text-white font-bold text-xs md:text-sm flex justify-center items-center gap-1.5 shadow-lg transition-all">
+                        <i data-lucide="credit-card" class="w-4 h-4"></i>
+                        <span>Pay with YOCO</span>
                     </button>
                 </div>
             </form>
@@ -298,13 +299,26 @@
             3:  { col: 4, row: 6, isHorizontal: false },
             4:  { col: 5, row: 6, isHorizontal: false },
             19: { col: 2, row: 7, isHorizontal: false },
-            20: { col: 3, row: 7, isHorizontal: false },
-            21: { col: 4, row: 7, isHorizontal: false },
-            22: { col: 5, row: 7, isHorizontal: false }
+            20: { col: 3, row: 7, isHorizontal: false }
         };
 
         window.addEventListener('DOMContentLoaded', async () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
+
+            // Handle payment outcome redirect status
+            const urlParams = new URLSearchParams(window.location.search);
+            const paymentStatus = urlParams.get('payment');
+
+            if (paymentStatus === 'success') {
+                alert('🎉 Payment successful! Your table booking has been confirmed.');
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } else if (paymentStatus === 'cancelled') {
+                alert('Payment was cancelled. You can try again when you are ready.');
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } else if (paymentStatus === 'failed') {
+                alert('❌ Payment failed or could not be verified. Please try again.');
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
 
             document.getElementById('selected-date').value = appState.selectedDate;
             document.getElementById('start-time').value = appState.startTime;
@@ -315,7 +329,6 @@
             document.getElementById('duration-hours').addEventListener('change', onFilterChange);
             
             document.getElementById('cancel-booking-btn').addEventListener('click', closeBookingModal);
-            document.getElementById('booking-form').addEventListener('submit', handleFormSubmit);
             document.getElementById('mobile-multi-book-btn').addEventListener('click', openMultiBookingModal);
             document.getElementById('clear-selection-btn').addEventListener('click', clearSelection);
             
@@ -380,7 +393,7 @@
                 const data = await res.json();
                 appState.tables = Array.isArray(data) ? data : [];
             } catch (err) {
-                appState.tables = Object.keys(floorPlanCoordinates).map(num => ({ id: parseInt(num), price: 50 }));
+                appState.tables = Object.keys(floorPlanCoordinates).map(num => ({ id: parseInt(num),price: res.price }));
             }
             renderFloorPlan();
             updateAvailabilitySummary();
@@ -449,7 +462,7 @@
         function updateSelectionUI() {
             const count = appState.selectedTables.length;
             const duration = Number(appState.durationHours);
-            const bookingFee = 15 * count;
+            const bookingFee = 20 * count;
             
             let subtotal = 0;
             appState.selectedTables.forEach(t => subtotal += (t.price || 50) * duration);
@@ -499,7 +512,7 @@
             const tableNums = appState.selectedTables.map(t => t.id).sort((a,b) => a - b).join(', ');
             const duration = Number(appState.durationHours);
             const count = appState.selectedTables.length;
-            const bookingFee = 15 * count;
+            const bookingFee = 20 * count;
 
             let subtotal = 0;
             appState.selectedTables.forEach(t => subtotal += (t.price || 50) * duration);
@@ -513,7 +526,6 @@
             document.getElementById('modal-subtotal').innerText = `R${subtotal}`;
             document.getElementById('modal-booking-fee').innerText = `+R${bookingFee}`;
             document.getElementById('modal-total-price').innerText = `R${total}`;
-            document.getElementById('form-total-price').value = total;
 
             document.getElementById('booking-modal').classList.remove('hidden');
         }
@@ -522,13 +534,20 @@
             document.getElementById('booking-modal').classList.add('hidden');
         }
 
-        async function handleFormSubmit(e) {
-            e.preventDefault();
+        async function handleYocoPayment() {
+            const nameInput = document.getElementById('form-user-name');
+            const phoneInput = document.getElementById('form-user-phone');
 
-            const submitBtn = document.getElementById('confirm-booking-btn');
-            const originalText = submitBtn.innerHTML;
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = `<span>Booking...</span>`;
+            if (!nameInput.checkValidity() || !phoneInput.checkValidity()) {
+                nameInput.reportValidity();
+                phoneInput.reportValidity();
+                return;
+            }
+
+            const payBtn = document.getElementById('pay-yoco-btn');
+            const originalText = payBtn.innerHTML;
+            payBtn.disabled = true;
+            payBtn.innerHTML = `<span>Redirecting...</span>`;
 
             const payload = {
                 tableIds: appState.selectedTables.map(t => t.id),
@@ -536,35 +555,44 @@
                 startTime: appState.startTime,
                 durationHours: appState.durationHours,
                 slot: getFormattedSlot(),
-                userName: document.getElementById('form-user-name').value,
-                phone: document.getElementById('form-user-phone').value,
+                userName: nameInput.value,
+                phone: phoneInput.value,
                 userId: userId,
-                bookingFeePerTable: 15
+                bookingFeePerTable: 20
+            
             };
 
             try {
-                const res = await fetch('/api/bookings/multi', {
+                const res = await fetch('/api/payments/yoco/create-checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    console.error(`Server error (HTTP ${res.status}):`, errorText);
+                    alert(`Server returned error ${res.status}. Please verify server routes.`);
+                    payBtn.disabled = false;
+                    payBtn.innerHTML = originalText;
+                    return;
+                }
+
                 const data = await res.json();
 
-                if (res.ok && data.success) {
-                    alert('Booking confirmed successfully!');
-                    closeBookingModal();
-                    clearSelection();
-                    loadData();
+                if (data.redirectUrl) {
+                    // Perform full window redirect to Yoco Hosted Checkout page
+                    window.location.href = data.redirectUrl;
                 } else {
-                    alert(data.error || 'Failed to complete booking. Please try again.');
+                    alert(data.error || 'Failed to initialize YOCO payment session.');
+                    payBtn.disabled = false;
+                    payBtn.innerHTML = originalText;
                 }
             } catch (err) {
-                console.error('Error during booking submission:', err);
-                alert('Connection error while saving booking.');
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalText;
+                console.error('Error creating Yoco checkout session:', err);
+                alert('Connection error while initializing payment.');
+                payBtn.disabled = false;
+                payBtn.innerHTML = originalText;
             }
         }
     </script>
