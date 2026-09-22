@@ -234,7 +234,7 @@
                 <div class="flex justify-between text-gray-400"><span>Duration:</span> <span id="modal-duration" class="text-white font-medium">--</span></div>
                 <div class="flex justify-between text-gray-400"><span>Tables:</span> <span id="modal-tables-count" class="text-white font-medium">--</span></div>
                 <div class="flex justify-between text-gray-400"><span>Subtotal:</span> <span id="modal-subtotal" class="text-white font-medium">R0</span></div>
-                <div class="flex justify-between text-gray-400"><span>Reservation Fee:</span> <span class="text-amber-400" id="modal-booking-fee">+R20</span></div>
+                <div class="flex justify-between text-gray-400"><span>Reservation Fee (R15 * hour):</span> <span class="text-amber-400" id="modal-booking-fee"></span></div>
                 <div class="border-t border-gray-800 pt-1.5 flex justify-between font-bold text-sm text-white"><span>Total Due:</span> <span id="modal-total-price" class="text-felt-400">R0</span></div>
             </div>
 
@@ -299,7 +299,9 @@
             3:  { col: 4, row: 6, isHorizontal: false },
             4:  { col: 5, row: 6, isHorizontal: false },
             19: { col: 2, row: 7, isHorizontal: false },
-            20: { col: 3, row: 7, isHorizontal: false }
+            20: { col: 3, row: 7, isHorizontal: false },
+            21: { col: 4, row: 7, isHorizontal: false },
+            22: { col: 5, row: 7, isHorizontal: false }
         };
 
         window.addEventListener('DOMContentLoaded', async () => {
@@ -393,7 +395,7 @@
                 const data = await res.json();
                 appState.tables = Array.isArray(data) ? data : [];
             } catch (err) {
-                appState.tables = Object.keys(floorPlanCoordinates).map(num => ({ id: parseInt(num),price: res.price }));
+                appState.tables = Object.keys(floorPlanCoordinates).map(num => ({ id: parseInt(num), price: res.price }));
             }
             renderFloorPlan();
             updateAvailabilitySummary();
@@ -462,14 +464,14 @@
         function updateSelectionUI() {
             const count = appState.selectedTables.length;
             const duration = Number(appState.durationHours);
-            const bookingFee = 20 * count * duration;
+            const bookingFee = 15 * duration * count;
             
             let subtotal = 0;
             appState.selectedTables.forEach(t => subtotal += (t.price || 50) * duration);
             const total = subtotal + bookingFee;
 
             document.getElementById('mobile-selected-count').innerText = `${count} table${count === 1 ? '' : 's'} selected`;
-            document.getElementById('bottom-price').innerText = count > 0 ? `Total: R${total} (incl. R${bookingFee} fee)` : 'Choose one or more available tables';
+            document.getElementById('bottom-price').innerText = count > 0 ? `Total: R${total} (incl. R15 * hour fee: R${bookingFee})` : 'Choose one or more available tables';
             document.getElementById('mobile-multi-book-btn').disabled = count === 0;
 
             const previewSec = document.getElementById('selection-preview');
@@ -512,7 +514,7 @@
             const tableNums = appState.selectedTables.map(t => t.id).sort((a,b) => a - b).join(', ');
             const duration = Number(appState.durationHours);
             const count = appState.selectedTables.length;
-            const bookingFee = 15 * count * duration;
+            const bookingFee = 15 * duration * count;
 
             let subtotal = 0;
             appState.selectedTables.forEach(t => subtotal += (t.price || 50) * duration);
@@ -558,8 +560,7 @@
                 userName: nameInput.value,
                 phone: phoneInput.value,
                 userId: userId,
-                bookingFeePerTable: 20
-            
+                bookingFeePerHour: 15
             };
 
             try {
