@@ -19,58 +19,190 @@
     </script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Outfit', sans-serif; background-color: #0b0f17; color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
-        .billiard-table-cloth { background: radial-gradient(circle, #059669 0%, #047857 70%, #064e3b 100%); }
-        .billiard-wood-frame { background: linear-gradient(145deg, #5c2d12, #2a1205); }
+<style>
+    body { font-family: 'Outfit', sans-serif; background-color: #0b0f17; color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
+    
+    /* Table Felt Themes */
+    .billiard-table-cloth-blue { background: radial-gradient(circle, #5982db 0%, #1d4ed8 70%, #006796 100%); }
+    .billiard-table-cloth-green { background: radial-gradient(circle, #059669 0%, #047857 70%, #064e3b 100%); }
+    .billiard-wood-frame { background: linear-gradient(145deg, #5c2d12, #2a1205); }
 
+    .floorplan-grid {
+        display: grid;
+        grid-template-columns: 210px repeat(4, 1fr) 110px;
+        grid-template-rows: 40px 40px repeat(6, 120px) 40px;
+        gap: 0.6rem;
+    }
+
+    @media (min-width: 768px) {
         .floorplan-grid {
-            display: grid;
-            grid-template-columns: 140px repeat(4, 1fr) 110px;
-            grid-template-rows: 40px repeat(6, 100px) 40px;
-            gap: 0.5rem;
+            grid-template-columns: 260px repeat(4, 1fr) 130px;
+            grid-template-rows: 45px 50px repeat(6, 135px) 50px;
+            gap: 0.85rem;
         }
+    }
 
-        @media (min-width: 768px) {
-            .floorplan-grid {
-                grid-template-columns: 180px repeat(4, 1fr) 130px;
-                grid-template-rows: 50px repeat(6, 115px) 50px;
-                gap: 0.75rem;
-            }
+    .table-slot-container {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Uniform Table Dimensions: Matching all vertical tables perfectly */
+    .table-frame-horizontal { width: 125px; height: 68px; }
+    .table-frame-vertical { width: 68px; height: 120px; }
+
+    @media (min-width: 768px) {
+        .table-frame-horizontal { width: 145px; height: 78px; }
+        .table-frame-vertical { width: 78px; height: 135px; }
+    }
+
+    .zone-heyball { background: rgba(55, 65, 81, 0.25); border: 1px dashed #6b7280; }
+    .zone-restroom { background: rgba(14, 165, 233, 0.15); border: 1px solid #0284c7; }
+    .zone-stage { background: rgba(234, 179, 8, 0.15); border: 1px solid #eab308; }
+    .zone-counter { background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; }
+    .zone-door { background: rgba(245, 158, 11, 0.2); border: 1px dashed #f59e0b; }
+
+    .availability-key { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .available-key { background: #10b981; }
+    .booked-key { background: #ef4444; }
+
+    .type-key-box { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="time"]::-webkit-calendar-picker-indicator {
+        filter: invert(1);
+        cursor: pointer;
+    }
+    
+    /* Pool Cue Animation Modal Styles */
+    #cue-animation-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+    #cue-animation-overlay.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .pool-table-canvas {
+        position: relative;
+        width: 320px;
+        height: 180px;
+        background: radial-gradient(circle, #059669 0%, #064e3b 100%);
+        border: 8px solid #5c2d12;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        overflow: hidden;
+    }
+    /* Pocket indicator in top right */
+    .pocket {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 24px;
+        height: 24px;
+        background: #022c22;
+        border-radius: 50%;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.9);
+    }
+    /* The White Ball */
+    .cue-ball {
+        position: absolute;
+        bottom: 30px;
+        left: 40px;
+        width: 20px;
+        height: 20px;
+        background: radial-gradient(circle at 35% 35%, #ffffff 0%, #e2e8f0 60%, #94a3b8 100%);
+        border-radius: 50%;
+        box-shadow: inset -2px -2px 4px rgba(0,0,0,0.4), 0 3px 6px rgba(0,0,0,0.4);
+    }
+    /* The Cue Stick */
+    .cue-stick {
+        position: absolute;
+        bottom: -40px;
+        left: -120px;
+        width: 160px;
+        height: 6px;
+        background: linear-gradient(90deg, #d97706, #92400e, #451a03);
+        border-radius: 3px;
+        transform: rotate(-35deg);
+        transform-origin: right center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    @keyframes hitAndSink {
+        0% {
+            transform: translate(0, 0) scale(1);
+            animation-timing-function: ease-out;
         }
-
-        .table-slot-container {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        28% {
+            /* Rest before impact */
+            transform: translate(0, 0) scale(1);
+            animation-timing-function: cubic-bezier(0.1, 0.9, 0.2, 1);
         }
-
-        .table-frame-horizontal { width: 100px; height: 52px; }
-        .table-frame-vertical { width: 52px; height: 100px; }
-
-        @media (min-width: 768px) {
-            .table-frame-horizontal { width: 110px; height: 58px; }
-            .table-frame-vertical { width: 58px; height: 110px; }
+        62% {
+            /* Rolls precisely to the rim/edge of the top-right pocket */
+            transform: translate(238px, -118px) scale(1);
+            animation-timing-function: ease-in;
         }
-
-        .zone-heyball { background: rgba(16, 185, 129, 0.15); border: 1px dashed #10b981; }
-        .zone-restroom { background: rgba(14, 165, 233, 0.15); border: 1px solid #0284c7; }
-        .zone-stage { background: rgba(234, 179, 8, 0.15); border: 1px solid #eab308; }
-        .zone-counter { background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; }
-        .zone-door { background: rgba(245, 158, 11, 0.2); border: 1px dashed #f59e0b; }
-
-        .availability-key { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-        .available-key { background: #10b981; }
-        .booked-key { background: #ef4444; }
-
-        input[type="date"]::-webkit-calendar-picker-indicator,
-        input[type="time"]::-webkit-calendar-picker-indicator {
-            filter: invert(1);
-            cursor: pointer;
+        82% {
+            /* Sinks completely down into the center of the pocket hole */
+            transform: translate(246px, -126px) scale(0.2);
+            opacity: 0.9;
         }
-    </style>
+        100% {
+            /* Fully disappears under the pocket ledge */
+            transform: translate(248px, -128px) scale(0);
+            opacity: 0;
+        }
+    }
+
+    @keyframes cueStrike {
+        0% {
+            transform: translate(0, 0) rotate(-35deg);
+            animation-timing-function: ease-in;
+        }
+        18% {
+            /* Pullback wind-up */
+            transform: translate(-22px, 22px) rotate(-35deg);
+            animation-timing-function: cubic-bezier(0, 1, 0.2, 1);
+        }
+        28% {
+            /* Forward snap/strike impact */
+            transform: translate(45px, -45px) rotate(-35deg);
+        }
+        38% {
+            /* Natural recoil back after hitting the ball */
+            transform: translate(25px, -25px) rotate(-35deg);
+            opacity: 1;
+        }
+        70% {
+            transform: translate(25px, -25px) rotate(-35deg);
+            opacity: 1;
+        }
+        100% {
+            transform: translate(25px, -25px) rotate(-35deg);
+            opacity: 0;
+        }
+    }
+
+    .animate-ball {
+        animation: hitAndSink 1.6s forwards;
+    }
+    .animate-cue {
+        animation: cueStrike 1.6s forwards;
+    }
+</style>
 </head>
 <body class="min-h-screen flex flex-col bg-[#0b0f17] pb-24 md:pb-0">
 
@@ -105,7 +237,6 @@
 
             <!-- Date, Time, and Duration Controls -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <!-- Date Picker -->
                 <div>
                     <label class="block text-[8px] uppercase font-bold text-gray-400 mb-2 tracking-wider">Select Date</label>
                     <div class="relative">
@@ -113,7 +244,6 @@
                     </div>
                 </div>
 
-                <!-- Custom Start Time -->
                 <div>
                     <label class="block text-[8px] uppercase font-bold text-gray-400 mb-2 tracking-wider">Start Time</label>
                     <div class="relative">
@@ -121,7 +251,6 @@
                     </div>
                 </div>
 
-                <!-- Duration -->
                 <div>
                     <label class="block text-[8px] uppercase font-bold text-gray-400 mb-2 tracking-wider">Duration (1hr Block Slots)</label>
                     <select id="duration-hours" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm font-semibold text-white focus:outline-none focus:border-felt-500">
@@ -134,7 +263,6 @@
                 </div>
             </div>
 
-            <!-- Booking Slot Summary Preview -->
             <div class="mt-4 flex items-center justify-between rounded-xl bg-felt-950/60 border border-felt-800/60 px-3 py-2.5">
                 <div class="flex items-center gap-2">
                     <i data-lucide="calendar-clock" class="w-4 h-4 text-felt-400"></i>
@@ -145,14 +273,16 @@
         </section>
 
         <!-- Availability summary -->
-        <section class="mb-3 flex items-center justify-between">
-            <div>
-                <h3 class="text-sm md:text-base font-bold text-white">Available tables</h3>
-                <p id="availability-summary" class="text-[11px] md:text-xs text-gray-500 mt-0.5">Checking availability…</p>
-            </div>
-            <div class="flex items-center gap-2 text-[10px] text-gray-500">
-                <span class="availability-key available-key"></span> Available
-                <span class="availability-key booked-key ml-1"></span> Booked
+        <section class="mb-3 space-y-2">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-sm md:text-base font-bold text-white">Available tables</h3>
+                    <p id="availability-summary" class="text-[11px] md:text-xs text-gray-500 mt-0.5">Checking availability…</p>
+                </div>
+                <div class="flex items-center gap-2 text-[10px] text-gray-500">
+                    <span class="availability-key available-key"></span> Available
+                    <span class="availability-key booked-key ml-1"></span> Booked
+                </div>
             </div>
         </section>
 
@@ -167,17 +297,64 @@
             </div>
 
             <div class="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
-                <div class="floorplan-grid min-w-[720px] md:min-w-[900px] mx-auto py-2">
-                    <div class="zone-restroom rounded-xl text-sky-400 font-semibold text-[10px] md:text-xs flex items-center justify-center col-start-2 row-start-1">Mens</div>
-                    <div class="zone-stage rounded-xl text-amber-400 font-bold text-xs md:text-sm flex items-center justify-center col-span-2 col-start-3 row-start-1">STAGE</div>
-                    <div class="zone-restroom rounded-xl text-sky-400 font-semibold text-[10px] md:text-xs flex items-center justify-center col-start-5 row-start-1">Ladies</div>
-                    <div class="zone-heyball rounded-2xl p-2 md:p-4 text-emerald-400 font-bold text-[10px] md:text-xs flex flex-col justify-center items-center text-center col-start-1 row-start-2 row-span-6">
-                        <span>Heyball & 9-Ball</span>
+                <div class="floorplan-grid min-w-[780px] md:min-w-[960px] mx-auto py-2">
+                    
+                    <!-- Table Type Key Row Above Mens, Stage & Ladies -->
+                    <div class="col-span-4 col-start-2 row-start-1 bg-gray-900/90 border border-gray-800 rounded-xl px-4 py-1.5 flex items-center justify-between text-xs text-gray-300">
+                        <span class="text-gray-400 font-semibold text-[10px] md:text-[11px] uppercase tracking-wider">Main Arena Table Types:</span>
+                        <div class="flex items-center gap-4">
+                            <div class="flex items-center gap-1.5">
+                                <span class="type-key-box bg-blue-600 border border-blue-400"></span>
+                                <span class="text-[10px] md:text-xs font-medium">Blue: Blackball Tables</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="type-key-box bg-emerald-600 border border-emerald-400"></span>
+                                <span class="text-[10px] md:text-xs font-medium">Green: Rasson Tables</span>
+                            </div>
+                        </div>
                     </div>
+
+                    <div class="zone-restroom rounded-xl text-sky-400 font-semibold text-[10px] md:text-xs flex items-center justify-center col-start-2 row-start-2">Mens</div>
+                    <div class="zone-stage rounded-xl text-amber-400 font-bold text-xs md:text-sm flex items-center justify-center col-span-2 col-start-3 row-start-2">STAGE</div>
+                    <div class="zone-restroom rounded-xl text-sky-400 font-semibold text-[10px] md:text-xs flex items-center justify-center col-start-5 row-start-2">Ladies</div>
+                    
+                    <!-- Heyball & 9-Ball Section Container with Key, Table Grid & Bottom Entrance/Exit -->
+                    <div class="zone-heyball rounded-2xl p-2 md:p-3 text-gray-300 font-bold text-[10px] md:text-xs flex flex-col justify-between items-center text-center col-start-1 row-start-2 row-span-7 overflow-y-auto">
+                        <div class="w-full border-b border-gray-600/30 pb-2 mb-2 shrink-0">
+                            <span class="text-xs md:text-sm block text-gray-200">Heyball & 9-Ball Zone</span>
+                            <!-- Zone Color Key -->
+                            <div class="flex items-center justify-center gap-2 mt-1.5 text-[9px] md:text-[10px] font-normal text-gray-400">
+                                <div class="flex items-center gap-1">
+                                    <span class="type-key-box bg-emerald-600 border border-emerald-400 w-2.5 h-2.5"></span>
+                                    <span>Chinese Heyball</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <span class="type-key-box bg-blue-600 border border-blue-400 w-2.5 h-2.5"></span>
+                                    <span>American 9ball</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="heyball-zone-container" class="grid grid-cols-2 gap-2 md:gap-3 w-full my-auto justify-items-center"></div>
+                        
+                        <!-- Entrance / Exit directly below Tables 23 & 24 -->
+                        <div class="w-full mt-3 pt-2 border-t border-gray-600/30 shrink-0">
+                            <div class="zone-door rounded-xl p-1.5 text-amber-300 font-bold text-[10px] md:text-xs flex items-center justify-center gap-1 w-full uppercase tracking-wider">
+                                <i data-lucide="door-open" class="w-3.5 h-3.5"></i>
+                                Entrance / Exit
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="table-node-container" class="contents"></div>
-                    <div class="zone-door rounded-xl p-1 md:p-2 text-amber-300 font-semibold text-[10px] md:text-xs flex items-center justify-center text-center col-start-6 row-start-5 row-span-2">Exit</div>
-                    <div class="zone-counter rounded-xl text-amber-400 font-bold text-[10px] md:text-xs flex items-center justify-center col-start-3 row-start-8">Entrance</div>
-                    <div class="zone-counter rounded-xl text-amber-400 font-bold text-[10px] md:text-xs flex items-center justify-center col-span-2 col-start-4 row-start-8">Counter</div>
+                    <div class="zone-door rounded-xl p-1.5 text-amber-300 font-bold text-[8px] md:text-xs flex items-center justify-center gap-1 text-center col-start-6 row-start-6 row-span-2 uppercase tracking-wider">
+                        <i data-lucide="door-open" class="w-3.5 h-3.5"></i>
+                        Entrance / Exit
+                    </div>
+                    <div class="zone-door rounded-xl p-1.5 text-amber-300 font-bold text-[8px] md:text-xs flex items-center justify-center gap-1 text-center col-start-3 row-start-9 uppercase tracking-wider">
+            <i data-lucide="door-open" class="w-3.5 h-3.5"></i>
+            Entrance / Exit
+        </div>
+                            <div class="zone-counter rounded-xl text-amber-400 font-bold text-[10px] md:text-xs flex items-center justify-center col-span-2 col-start-4 row-start-9">Counter</div>
                 </div>
             </div>
         </section>
@@ -249,6 +426,10 @@
                     <label class="block text-[10px] uppercase font-semibold text-gray-400 mb-1">Phone Number</label>
                     <input type="tel" id="form-user-phone" required placeholder="082 123 4567" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
                 </div>
+                <div>
+                    <label class="block text-[10px] uppercase font-semibold text-gray-400 mb-1">Email Address (Email Confirmations)</label>
+                    <input type="email" id="form-user-email" required placeholder="john@example.com" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
+                </div>
 
                 <div class="flex gap-2 pt-2">
                     <button type="button" id="cancel-booking-btn" class="w-1/3 py-2.5 border border-gray-700 rounded-xl text-xs md:text-sm text-gray-300 active:bg-gray-800">
@@ -260,6 +441,21 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Pool Cue Animation Modal -->
+     <div id="cue-animation-overlay">
+    <div class="text-center space-y-4">
+        <div class="pool-table-canvas mx-auto">
+            <div class="pocket"></div>
+            <div id="animated-ball" class="cue-ball"></div>
+            <div id="animated-cue" class="cue-stick"></div>
+        </div>
+        <div class="space-y-1">
+            <h3 class="text-lg font-bold text-white">Booking Confirmed! 🎱</h3>
+                <p class="text-xs text-emerald-400">Your table has been successfully reserved.</p>
+            </div>
         </div>
     </div>
 
@@ -281,40 +477,55 @@
         };
 
         const floorPlanCoordinates = {
-            16: { col: 2, row: 2, isHorizontal: true },
-            18: { col: 3, row: 2, isHorizontal: true, colSpan: 2 },
-            14: { col: 5, row: 2, isHorizontal: true },
-            15: { col: 2, row: 3, isHorizontal: true },
-            17: { col: 3, row: 3, isHorizontal: true, colSpan: 2 },
-            13: { col: 5, row: 3, isHorizontal: true },
-            9:  { col: 2, row: 4, isHorizontal: false },
-            10: { col: 3, row: 4, isHorizontal: false },
-            11: { col: 4, row: 4, isHorizontal: false },
-            12: { col: 5, row: 4, isHorizontal: false },
-            8:  { col: 2, row: 5, isHorizontal: false },
-            7:  { col: 3, row: 5, isHorizontal: false },
-            6:  { col: 4, row: 5, isHorizontal: false },
-            5:  { col: 5, row: 5, isHorizontal: false },
-            1:  { col: 2, row: 6, isHorizontal: false },
-            2:  { col: 3, row: 6, isHorizontal: false },
-            3:  { col: 4, row: 6, isHorizontal: false },
-            4:  { col: 5, row: 6, isHorizontal: false },
-            19: { col: 2, row: 7, isHorizontal: false },
-            20: { col: 3, row: 7, isHorizontal: false },
-            21: { col: 4, row: 7, isHorizontal: false },
-            22: { col: 5, row: 7, isHorizontal: false }
+            16: { col: 2, row: 3, isHorizontal: true },
+            18: { col: 3, row: 3, isHorizontal: true, colSpan: 2 },
+            14: { col: 5, row: 3, isHorizontal: true },
+            15: { col: 2, row: 4, isHorizontal: true },
+            17: { col: 3, row: 4, isHorizontal: true, colSpan: 2 },
+            13: { col: 5, row: 4, isHorizontal: true },
+            9:  { col: 2, row: 5, isHorizontal: false },
+            10: { col: 3, row: 5, isHorizontal: false },
+            11: { col: 4, row: 5, isHorizontal: false },
+            12: { col: 5, row: 5, isHorizontal: false },
+            8:  { col: 2, row: 6, isHorizontal: false },
+            7:  { col: 3, row: 6, isHorizontal: false },
+            6:  { col: 4, row: 6, isHorizontal: false },
+            5:  { col: 5, row: 6, isHorizontal: false },
+            1:  { col: 2, row: 7, isHorizontal: false },
+            2:  { col: 3, row: 7, isHorizontal: false },
+            3:  { col: 4, row: 7, isHorizontal: false },
+            4:  { col: 5, row: 7, isHorizontal: false },
+            19: { col: 2, row: 8, isHorizontal: false },
+            20: { col: 3, row: 8, isHorizontal: false },
+            21: { col: 4, row: 8, isHorizontal: false },
+            22: { col: 5, row: 8, isHorizontal: false }
         };
+
+        const heyballZoneTables = [
+            { id: 32, name: 'Table 32', type: '9ball' },
+            { id: 31, name: 'Table 31', type: '9ball' },
+            { id: 30, name: 'Table 30', type: '9ball' },
+            { id: 29, name: 'Table 29', type: '9ball' },
+            { id: 28, name: 'Table 28', type: 'heyball' },
+            { id: 27, name: 'Table 27', type: 'heyball' },
+            { id: 26, name: 'Table 26', type: 'heyball' },
+            { id: 25, name: 'Table 25', type: 'heyball' },
+            { id: 24, name: 'Table 24', type: 'heyball' },
+            { id: 23, name: 'Table 23', type: 'heyball' }
+        ];
+
+        const allTableNumbers = [...Object.keys(floorPlanCoordinates).map(Number), ...heyballZoneTables.map(t => t.id)];
 
         window.addEventListener('DOMContentLoaded', async () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
 
-            // Handle payment outcome redirect status
             const urlParams = new URLSearchParams(window.location.search);
             const paymentStatus = urlParams.get('payment');
 
             if (paymentStatus === 'success') {
-                alert('🎉 Payment successful! Your table booking has been confirmed.');
-                window.history.replaceState({}, document.title, window.location.pathname);
+               showBookingSuccessAnimation(() => {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                });
             } else if (paymentStatus === 'cancelled') {
                 alert('Payment was cancelled. You can try again when you are ready.');
                 window.history.replaceState({}, document.title, window.location.pathname);
@@ -380,7 +591,7 @@
                 return;
             }
             const available = appState.tables.length;
-            const total = Object.keys(floorPlanCoordinates).length;
+            const total = allTableNumbers.length;
             el.innerText = `${available} of ${total} tables available for ${getFormattedSlot()}`;
         }
 
@@ -396,13 +607,25 @@
                 const data = await res.json();
                 appState.tables = Array.isArray(data) ? data : [];
             } catch (err) {
-                appState.tables = Object.keys(floorPlanCoordinates).map(num => ({ id: parseInt(num), price: res.price }));
+                appState.tables = allTableNumbers.map(num => {
+                    const heyballItem = heyballZoneTables.find(t => t.id === num);
+                    return { 
+                        id: num, 
+                        name: heyballItem ? `Table ${heyballItem.name}` : `Table ${num}`, 
+                        price: 50 
+                    };
+                });
             }
             renderFloorPlan();
             updateAvailabilitySummary();
         }
 
         function renderFloorPlan() {
+            renderMainFloor();
+            renderHeyballZone();
+        }
+
+        function renderMainFloor() {
             const container = document.getElementById('table-node-container');
             container.innerHTML = '';
 
@@ -413,6 +636,11 @@
                 const isAvailable = Boolean(tableData);
                 const isSelected = appState.selectedTables.some(t => t.id === num);
                 const price = tableData ? (tableData.price || 50) : 50;
+                
+                const tableName = tableData && tableData.name ? tableData.name : `Table ${num}`;
+
+                const isRasson = num === 17 || num === 18;
+                const feltClass = isRasson ? 'billiard-table-cloth-green' : 'billiard-table-cloth-blue';
 
                 const wrapper = document.createElement('div');
                 wrapper.className = "table-slot-container flex items-center justify-center";
@@ -428,20 +656,84 @@
                 } ${isSelected ? 'ring-2 md:ring-4 ring-felt-500 scale-105 shadow-[0_0_20px_rgba(16,185,129,.28)]' : ''}`;
 
                 tableCard.innerHTML = `
-                    <div class="billiard-table-cloth w-full h-full rounded-lg flex flex-col items-center justify-center text-white relative p-0.5 text-center">
-                        <span class="text-xs md:text-sm font-bold leading-none">Table ${num}</span>
-                        <span class="text-[9px] md:text-[10px] text-emerald-200 mt-0.5 leading-none font-medium">R${price}/hr</span>
-                        ${!isAvailable ? '<span class="text-[8px] md:text-[9px] bg-red-950/90 text-red-400 px-1 py-0.5 rounded-md absolute font-semibold">Booked</span>' : ''}
-                        ${isSelected ? '<span class="text-[8px] md:text-[9px] bg-felt-500 text-black px-1 rounded-md absolute top-1 right-1 font-bold">✓</span>' : ''}
+                    <div class="${feltClass} w-full h-full rounded-lg flex flex-col items-center justify-center text-white relative p-1 text-center">
+                        ${isAvailable ? `
+                            <span class="text-[11px] md:text-xs font-extrabold leading-tight tracking-wide break-words max-w-full px-0.5">${tableName}</span>
+                            <span class="text-[9px] md:text-[10px] text-emerald-200 mt-0.5 leading-none font-semibold">R${price}/hr</span>
+                            ${isSelected ? '<span class="text-[8px] md:text-[9px] bg-felt-500 text-black px-1 rounded-md absolute top-1 right-1 font-bold">✓</span>' : ''}
+                        ` : `
+                            <span class="text-xs md:text-sm font-bold text-red-400 uppercase tracking-wider">Booked</span>
+                        `}
                     </div>
                 `;
 
                 if (isAvailable) {
-                    tableCard.addEventListener('click', () => toggleTableSelection({ id: num, price }));
+                    tableCard.addEventListener('click', () => toggleTableSelection({ id: num, name: tableName, price }));
                 }
 
                 wrapper.appendChild(tableCard);
                 container.appendChild(wrapper);
+            });
+        }
+
+        function showBookingSuccessAnimation(onComplete) {
+            const overlay = document.getElementById('cue-animation-overlay');
+            const ball = document.getElementById('animated-ball');
+            const cue = document.getElementById('animated-cue');
+
+            // Reset classes to restart animation if needed
+            ball.classList.remove('animate-ball');
+            cue.classList.remove('animate-cue');
+            void ball.offsetWidth; // trigger reflow
+            void cue.offsetWidth;
+
+            overlay.classList.add('active');
+            ball.classList.add('animate-ball');
+            cue.classList.add('animate-cue');
+
+            // After animation finishes (1.8s), hide overlay and execute callback
+            setTimeout(() => {
+                overlay.classList.remove('active');
+                if (onComplete) onComplete();
+            }, 5000);
+        }
+
+        function renderHeyballZone() {
+            const container = document.getElementById('heyball-zone-container');
+            container.innerHTML = '';
+
+            heyballZoneTables.forEach(tDef => {
+                const num = tDef.id;
+                const tableData = appState.tables.find(t => t.id === num || t.number === num);
+                const isAvailable = Boolean(tableData);
+                const isSelected = appState.selectedTables.some(t => t.id === num);
+                const price = tableData ? (tableData.price || 50) : 50;
+                const tableName = `Table ${tDef.name}`;
+
+                const feltClass = tDef.type === 'heyball' ? 'billiard-table-cloth-green' : 'billiard-table-cloth-blue';
+
+                const tableCard = document.createElement('div');
+                tableCard.className = `billiard-wood-frame p-1 rounded-xl transition-all table-frame-vertical ${
+                    isAvailable ? 'active:scale-95 md:hover:scale-105 cursor-pointer opacity-100 shadow-md' : 'opacity-40 pointer-events-none'
+                } ${isSelected ? 'ring-2 md:ring-4 ring-felt-500 scale-105 shadow-[0_0_20px_rgba(16,185,129,.28)]' : ''}`;
+
+                tableCard.innerHTML = `
+                    <div class="${feltClass} w-full h-full rounded-lg flex flex-col items-center justify-center text-white relative p-1 text-center">
+                        ${isAvailable ? `
+                            <span class="text-[10px] md:text-xs font-extrabold leading-tight tracking-wide break-words max-w-full px-0.5">${tDef.name}</span>
+                            <span class="text-[8px] md:text-[10px] text-emerald-200 leading-none font-semibold mt-0.5">R${price}/hr</span>
+                            ${isSelected ? '<span class="text-[8px] md:text-[9px] bg-felt-500 text-black px-1 rounded-md absolute top-1 right-1 font-bold">✓</span>' : ''}
+                        ` : `
+                            <span class="text-xs md:text-sm font-bold text-red-400 uppercase tracking-wider">Booked</span>
+                        `}
+                    </div>
+                `;
+
+                if (isAvailable) {
+                    tableCard.addEventListener('click', () => toggleTableSelection({ id: num, name: tableName, price }));
+                }
+
+                container.appendChild(tableCard);
             });
         }
 
@@ -540,10 +832,12 @@
         async function handleYocoPayment() {
             const nameInput = document.getElementById('form-user-name');
             const phoneInput = document.getElementById('form-user-phone');
+            const emailInput = document.getElementById('form-user-email');
 
-            if (!nameInput.checkValidity() || !phoneInput.checkValidity()) {
+            if (!nameInput.checkValidity() || !phoneInput.checkValidity() || !emailInput.checkValidity()) {
                 nameInput.reportValidity();
                 phoneInput.reportValidity();
+                emailInput.reportValidity();
                 return;
             }
 
@@ -560,6 +854,7 @@
                 slot: getFormattedSlot(),
                 userName: nameInput.value,
                 phone: phoneInput.value,
+                userIdentifier: emailInput.value,
                 userId: userId,
                 bookingFeePerHour: 15
             };
@@ -583,7 +878,6 @@
                 const data = await res.json();
 
                 if (data.redirectUrl) {
-                    // Perform full window redirect to Yoco Hosted Checkout page
                     window.location.href = data.redirectUrl;
                 } else {
                     alert(data.error || 'Failed to initialize YOCO payment session.');
