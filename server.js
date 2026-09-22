@@ -157,9 +157,13 @@ app.get('/api/weekly-availability', async (req, res) => {
     res.json(result);
 });
 
-// MULTI-TABLE USER BOOKINGS (DIRECT INSERT FOR PAY AT COUNTER)
-app.post('/api/bookings/multi', async (req, res) => {
-    const { tableIds, date, startTime, durationHours, slot, userName, phone, userId, bookingFeePerTable } = req.body;
+// ==========================================
+// YOCO PAYMENT INTEGRATION
+// ==========================================
+
+// 1. Create Checkout & Insert Pending Records into Database
+app.post('/api/payments/yoco/create-checkout', async (req, res) => {
+    const { tableIds, date, startTime, durationHours, slot, userName, phone, userIdentifier, bookingFeePerHour, bookingFeePerTable } = req.body;
 
     if (!tableIds || !Array.isArray(tableIds) || tableIds.length === 0) {
         return res.status(400).json({ error: 'Please select at least one table.' });
@@ -167,6 +171,7 @@ app.post('/api/bookings/multi', async (req, res) => {
 
     const targetRange = convertSlotToRange(slot, startTime, durationHours);
 
+    // Verify table availability before initiating checkout
     const { data: activeBookings, error: fetchErr } = await supabase
         .from('bookings')
         .select('*')
@@ -188,38 +193,178 @@ app.post('/api/bookings/multi', async (req, res) => {
         }
     }
 
+    // Calculate total price in CENTS
     const { data: dbTables } = await supabase.from('pool_tables').select('id, price');
     const priceMap = {};
     (dbTables || []).forEach(t => priceMap[t.id] = Number(t.price) || 50);
 
-    const fee = Number(bookingFeePerTable) || 15;
+    const feePerHour = Number(bookingFeePerHour) || Number(bookingFeePerTable) || 15;
     const duration = Number(durationHours) || 1;
+    const totalFeePerTable = feePerHour * duration;
 
-    const rows = tableIds.map(tableId => {
-        const basePrice = priceMap[tableId] || 50;
-        const subtotal = basePrice * duration;
-        return {
-            ref_id: `CUE-${Math.floor(100000 + Math.random() * 900000)}`,
-            table_id: Number(tableId),
-            booking_date: date,
-            start_time: startTime,
-            duration_hours: duration,
-            time_slot: slot,
-            user_name: userName,
-            phone: phone,
-            user_identifier: userId,
-            booking_fee: fee,
-            total_price: subtotal + fee,
-            status: 'CONFIRMED',
-            payment_status: 'DIRECT',
-            is_active: true
-        };
+    let totalRands = 0;
+    tableIds.forEach(tId => {
+        const basePrice = priceMap[tId] || 50;
+        totalRands += (basePrice * duration) + totalFeePerTable;
     });
 
-    const { data, error } = await supabase.from('bookings').insert(rows).select();
-    if (error) return res.status(500).json({ error: error.message });
+    const amountInCents = Math.round(totalRands * 100);
 
-    res.status(201).json({ success: true, count: data.length, bookings: data });
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.get('host');
+    const baseUrl = `${protocol}://${host}`;
+
+    try {
+        const secretKey = process.env.YOCO_SECRET_KEY;
+        if (!secretKey) {
+            console.error('YOCO_SECRET_KEY is missing in environment variables.');
+            return res.status(500).json({ error: 'Payment gateway configuration error.' });
+        }
+
+        const refId = `YOC-${Math.floor(100000 + Math.random() * 900000)}`;
+
+        // Construct Yoco Payload (Clean redirect URL using refId)
+        const yocoPayload = {
+            amount: amountInCents,
+            currency: 'ZAR',
+            cancelUrl: `${baseUrl}/?payment=cancelled`,
+            successUrl: `${baseUrl}/api/payments/yoco/success?refId=${refId}`,
+            failureUrl: `${baseUrl}/?payment=failed`,
+            metadata: {
+                ref_id: String(refId),
+                table_ids: tableIds.join(','),
+                booking_date: String(date)
+            }
+        };
+
+        const yocoResponse = await fetch('https://payments.yoco.com/api/checkouts', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${secretKey.trim()}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(yocoPayload)
+        });
+
+        const yocoData = await yocoResponse.json();
+
+        if (!yocoResponse.ok) {
+            console.error('Yoco API Error Detail:', JSON.stringify(yocoData, null, 2));
+            return res.status(400).json({ 
+                error: yocoData.message || yocoData.errorMessage || 'Failed to create Yoco payment session.' 
+            });
+        }
+
+        // Pre-insert pending booking rows into DB linked to refId
+        const pricePerTable = totalRands / tableIds.length;
+        const pendingRows = tableIds.map(tableId => ({
+            ref_id: refId,
+            checkout_id: yocoData.id || null,
+            table_id: tableId,
+            booking_date: date,
+            start_time: startTime || null,
+            duration_hours: duration,
+            time_slot: slot || '',
+            user_name: userName || 'Guest Customer',
+            phone: phone || null,
+            user_identifier: userIdentifier || 'GUEST_USER',
+            status: 'PENDING_PAYMENT',
+            booking_fee: totalFeePerTable,
+            total_price: pricePerTable,
+            payment_status: 'PENDING',
+            payment_method: 'ONLINE',
+            is_active: false // Inactive until payment completes
+        }));
+
+        const { error: insertErr } = await supabase.from('bookings').insert(pendingRows);
+        if (insertErr) {
+            console.error('Failed to pre-store pending booking:', insertErr);
+            return res.status(500).json({ error: 'Failed to initiate booking.' });
+        }
+
+        return res.json({ 
+            success: true, 
+            redirectUrl: yocoData.redirectUrl, 
+            checkoutId: yocoData.id 
+        });
+
+    } catch (err) {
+        console.error('Error creating Yoco checkout:', err);
+        return res.status(500).json({ error: 'Internal server error processing payment.' });
+    }
+});
+
+// 2. Redirect Success Callback (Queries DB by refId)
+app.get('/api/payments/yoco/success', async (req, res) => {
+    const { refId } = req.query;
+
+    if (!refId) {
+        console.error('Missing refId in success callback');
+        return res.redirect('/?payment=failed');
+    }
+
+    try {
+        // Find pending bookings by ref_id
+        const { data: pendingBookings, error: fetchErr } = await supabase
+            .from('bookings')
+            .select('*')
+            .eq('ref_id', refId);
+
+        if (fetchErr || !pendingBookings || pendingBookings.length === 0) {
+            console.error('No pending bookings found for RefID:', refId);
+            return res.redirect('/?payment=failed');
+        }
+
+        // Confirm status and set active
+        const { error: updateErr } = await supabase
+            .from('bookings')
+            .update({
+                status: 'CONFIRMED',
+                payment_status: 'PAID',
+                is_active: true
+            })
+            .eq('ref_id', refId);
+
+        if (updateErr) {
+            console.error('Error updating booking status:', updateErr);
+            return res.redirect('/?payment=failed');
+        }
+
+        return res.redirect('/?payment=success');
+
+    } catch (err) {
+        console.error('Error in Yoco success callback:', err);
+        return res.redirect('/?payment=failed');
+    }
+});
+
+// 3. Webhook Handler Fallback
+app.post('/api/payments/yoco/webhook', async (req, res) => {
+    try {
+        const event = req.body;
+
+        if (event && event.type === 'payment.succeeded') {
+            const payload = event.payload || {};
+            const metadata = payload.metadata || {};
+            const refId = metadata.ref_id;
+
+            if (refId) {
+                await supabase
+                    .from('bookings')
+                    .update({
+                        status: 'CONFIRMED',
+                        payment_status: 'PAID',
+                        is_active: true
+                    })
+                    .eq('ref_id', refId);
+            }
+        }
+
+        return res.status(200).send('Webhook Received');
+    } catch (err) {
+        console.error('Yoco Webhook Handler Error:', err);
+        return res.status(500).send('Webhook Error');
+    }
 });
 
 // ==========================================
@@ -356,7 +501,7 @@ app.post('/api/admin/action-item', async (req, res) => {
         }
 
         return {
-            ref_id: `${actionType.substring(0, 3)}-${Math.floor(100000 + Math.random() * 900000)}`.slice(0, 20),
+            ref_id: `${actionType.substring(0, 3)}-${Math.floor(100000 + Math.random() * 900000)}`.slice(0, 50),
             table_id: Number(tableId),
             booking_date: date,
             start_time: startTimeOverride,
@@ -368,6 +513,7 @@ app.post('/api/admin/action-item', async (req, res) => {
             status: status,
             payment_method: pMethod,
             total_price: calculatedPrice,
+            booking_fee: 0,
             is_active: true
         };
     });
@@ -490,7 +636,7 @@ app.get('/api/admin/bookings', async (req, res) => {
 
 // ADMIN OVERRIDE CREATE BOOKING (MANUAL ENTRY)
 app.post('/api/admin/bookings', async (req, res) => {
-    const { table_id, booking_date, start_time, duration_hours, time_slot, user_name, phone, status, notes } = req.body;
+    const { table_id, booking_date, start_time, duration_hours, time_slot, user_name, phone, status } = req.body;
 
     const targetRange = convertSlotToRange(time_slot, start_time, duration_hours);
 
@@ -511,19 +657,19 @@ app.post('/api/admin/bookings', async (req, res) => {
     }
 
     const newBooking = {
-        ref_id: `ADM-${Math.floor(100000 + Math.random() * 900000)}`.slice(0, 20),
+        ref_id: `ADM-${Math.floor(100000 + Math.random() * 900000)}`.slice(0, 50),
         table_id: Number(table_id),
         booking_date,
         start_time,
         duration_hours: Number(duration_hours) || 1,
         time_slot,
         user_name: user_name || 'Admin Manual Booking',
+        user_identifier: 'ADMIN_OVERRIDE',
         phone: phone || '',
         booking_fee: 0,
         total_price: 0,
         status: status || 'CONFIRMED',
         payment_status: 'ADMIN_OVERRIDE',
-        notes: notes || 'Created via admin portal',
         is_active: true
     };
 
@@ -537,7 +683,6 @@ app.put('/api/admin/bookings/:id', async (req, res) => {
     const { id } = req.params;
     const { user_name, phone, table_id, booking_date, start_time, duration_hours, time_slot, payment_method, total_price, status, is_active } = req.body;
 
-    // Check schedule overlaps with active bookings on the target date (ignoring current booking)
     if (booking_date && table_id && time_slot) {
         const targetRange = convertSlotToRange(time_slot, start_time, duration_hours);
 
@@ -656,4 +801,4 @@ app.patch('/api/admin/bookings/:id/payment', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`CueCraft Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Tee's Cueflix Server running on port ${PORT}`));
