@@ -3,7 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
+
 const app = express();
 
 // Trust reverse proxies (Render, Heroku, Nginx) so req.protocol accurately detects HTTPS
@@ -17,70 +18,16 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Notification Clients
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-
-
-// Notification Dispatch Function
-async function sendBookingConfirmation(bookingDetails) {
-    const { ref_id, user_name, phone, user_identifier, booking_date, time_slot, table_ids, total_price } = bookingDetails;
-    const email = user_identifier && user_identifier.includes('@') ? user_identifier : null;
-
-    // Fetch table details (including names) for all booked table IDs
-  let tableDisplayNames = Array.isArray(table_ids) ? table_ids.map(id => `Table ${id}`).join(', ') : `Table ${table_ids}`;
-    if (Array.isArray(table_ids) && table_ids.length > 0) {
-        const { data: dbTables } = await supabase
-            .from('pool_tables')
-            .select('id, name')
-            .in('id', table_ids);
-
-        if (dbTables && dbTables.length > 0) {
-            const nameMap = {};
-            dbTables.forEach(t => {
-                // Checks if name is custom or standard default (e.g. "Table 1") to prevent duplicate "Table 1 (Table 1)" strings
-                const isDefaultName = /^table\s*\d+$/i.test(t.name.trim());
-                nameMap[t.id] = isDefaultName ? t.name : `Table ${t.id} (${t.name})`;
-            });
-            tableDisplayNames = table_ids.map(id => nameMap[id] || `Table ${id}`).join(', ');
-        }
+// Setup Nodemailer transport using your SMTP environment variables
+const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: Number(process.env.SMTP_PORT) || 465,
+    secure: true, // true for port 465, false for other ports
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
     }
-    // Email Notification via Resend
-    if (resend && email) {
-        try {
-            const { data, error } = await resend.emails.send({
-                from: "Tee's Cueflix <onboarding@resend.dev>",
-                to: [email],
-                subject: `🎱 Booking Confirmation - Ref: ${ref_id}`,
-                html: `
-                    <div style="font-family: Arial, sans-serif; background-color: #0b0f17; color: #ffffff; padding: 24px; border-radius: 12px; max-width: 600px; margin: 0 auto;">
-                        <h2 style="color: #10b981; margin-top: 0;">Booking Confirmed!</h2>
-                        <p>Hi <strong>${user_name}</strong>,</p>
-                        <p>Thank you for reserving with Tee's Cueflix. Here are your booking details:</p>
-                        <table style="width: 100%; border-collapse: collapse; margin-top: 15px; color: #ffffff;">
-                            <tr style="border-bottom: 1px solid #1f2937;"><td style="padding: 8px 0; font-weight: bold;">Reference ID:</td><td style="padding: 8px 0;">${ref_id}</td></tr>
-                            <tr style="border-bottom: 1px solid #1f2937;"><td style="padding: 8px 0; font-weight: bold;">Date:</td><td style="padding: 8px 0;">${booking_date}</td></tr>
-                            <tr style="border-bottom: 1px solid #1f2937;"><td style="padding: 8px 0; font-weight: bold;">Time Slot:</td><td style="padding: 8px 0;">${time_slot}</td></tr>
-                            <tr style="border-bottom: 1px solid #1f2937;"><td style="padding: 8px 0; font-weight: bold;">Table(s):</td><td style="padding: 8px 0;">${tableDisplayNames}</td></tr>
-                            <tr style="border-bottom: 1px solid #1f2937;"><td style="padding: 8px 0; font-weight: bold;">Total Paid:</td><td style="padding: 8px 0; color: #10b981; font-weight: bold;">R${total_price}</td></tr>
-                        </table>
-                        
-                        <br/>
-                         <p>Please have your bookings details ready to show at the counter.</p>
-                        <p style="color: #9ca3af; font-size: 13px;">We look forward to seeing you on the felt!</p>
-                    </div>
-                `
-            });
-
-            if (error) {
-                console.error('Resend API returned error:', error);
-            } else {
-                console.log(`Confirmation Email sent successfully to ${email}`);
-            }
-        } catch (err) {
-            console.error('Error sending confirmation email:', err);
-        }
-    }
-}
+});
 
 // Explicit route for admin dashboard page
 app.get('/admin', (req, res) => {
@@ -131,6 +78,44 @@ function escapeCSV(val) {
     return `"${str}"`;
 }
 
+// Helper function to send booking confirmation emails
+async function sendBookingConfirmationEmail(updatedBookings) {
+    if (!updatedBookings || updatedBookings.length === 0) return;
+
+    const primaryBooking = updatedBookings[0];
+    const tableDisplayNames = updatedBookings.map(b => b.table_id).join(', ');
+    const totalPaid = updatedBookings.reduce((sum, b) => sum + (Number(b.total_price) || 0), 0);
+
+    if (primaryBooking.user_identifier && primaryBooking.user_identifier !== 'GUEST_USER') {
+        try {
+            await transporter.sendMail({
+                from: `"Tee's Cueflix" <${process.env.SMTP_USER}>`,
+                to: primaryBooking.user_identifier,
+                subject: `Booking Confirmed! Ref: ${primaryBooking.ref_id}`,
+                html: `
+                   <div style="font-family: Arial, sans-serif; background-color: #0b0f17; color: #ffffff; padding: 24px; border-radius: 12px; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #10b981; margin-top: 0;">Booking Confirmed!</h2>
+                    <p>Hi <strong>${primaryBooking.user_name}</strong>,</p>
+                    <p>Thank you for reserving with Tee's Cueflix. Here are your booking details:</p>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 15px; color: #ffffff;">
+                        <tr style="border-bottom: 1px solid #1f2937;"><td style="padding: 8px 0; font-weight: bold;">Reference ID:</td><td style="padding: 8px 0;">${primaryBooking.ref_id}</td></tr>
+                        <tr style="border-bottom: 1px solid #1f2937;"><td style="padding: 8px 0; font-weight: bold;">Date:</td><td style="padding: 8px 0;">${primaryBooking.booking_date}</td></tr>
+                        <tr style="border-bottom: 1px solid #1f2937;"><td style="padding: 8px 0; font-weight: bold;">Time Slot:</td><td style="padding: 8px 0;">${primaryBooking.time_slot || primaryBooking.start_time}</td></tr>
+                        <tr style="border-bottom: 1px solid #1f2937;"><td style="padding: 8px 0; font-weight: bold;">Table(s):</td><td style="padding: 8px 0;">${tableDisplayNames}</td></tr>
+                        <tr style="border-bottom: 1px solid #1f2937;"><td style="padding: 8px 0; font-weight: bold;">Total Paid:</td><td style="padding: 8px 0; color: #10b981; font-weight: bold;">R${totalPaid.toFixed(2)}</td></tr>
+                    </table>
+                    <br/>
+                     <p>Please have your booking details ready to show at the counter.</p>
+                    <p style="color: #9ca3af; font-size: 13px;">We look forward to seeing you on the felt!</p>
+                </div>
+                `
+            });
+        } catch (emailErr) {
+            console.error('Failed to send confirmation email:', emailErr);
+        }
+    }
+}
+
 // ==========================================
 // PUBLIC & CLIENT API ROUTES
 // ==========================================
@@ -173,9 +158,9 @@ app.get('/api/tables/available', async (req, res) => {
         })
         .map(t => ({
             id: t.id,
-            name: t.name || `Table ${t.table_number || t.id}`, // Fallback if name isn't a dedicated column
+            name: t.name || `Table ${t.table_number || t.id}`,
             number: t.table_number || t.number || t.id,
-            ...t // Includes any additional original fields
+            ...t
         }));
 
    res.json(availableTables);
@@ -236,7 +221,6 @@ app.get('/api/weekly-availability', async (req, res) => {
 // YOCO PAYMENT INTEGRATION
 // ==========================================
 
-// 1. Create Checkout & Insert Pending Records into Database
 app.post('/api/payments/yoco/create-checkout', async (req, res) => {
     const { tableIds, date, startTime, durationHours, slot, userName, phone, userIdentifier, bookingFeePerHour, bookingFeePerTable } = req.body;
 
@@ -298,13 +282,13 @@ app.post('/api/payments/yoco/create-checkout', async (req, res) => {
 
         const refId = `YOC-${Math.floor(100000 + Math.random() * 900000)}`;
 
-        // Construct Yoco Payload (Clean redirect URL using refId)
+        // Construct Yoco Payload
         const yocoPayload = {
             amount: amountInCents,
             currency: 'ZAR',
-            cancelUrl: `${baseUrl}/?payment=cancelled`,
             successUrl: `${baseUrl}/api/payments/yoco/success?refId=${refId}`,
-            failureUrl: `${baseUrl}/?payment=failed`,
+            cancelUrl: `${baseUrl}/?payment=cancelled&refId=${refId}`,
+            failureUrl: `${baseUrl}/?payment=failed&refId=${refId}`,
             metadata: {
                 ref_id: String(refId),
                 table_ids: tableIds.join(','),
@@ -348,7 +332,7 @@ app.post('/api/payments/yoco/create-checkout', async (req, res) => {
             total_price: pricePerTable,
             payment_status: 'PENDING',
             payment_method: 'ONLINE',
-            is_active: false // Inactive until payment completes
+            is_active: false
         }));
 
         const { error: insertErr } = await supabase.from('bookings').insert(pendingRows);
@@ -369,7 +353,7 @@ app.post('/api/payments/yoco/create-checkout', async (req, res) => {
     }
 });
 
-// 2. Redirect Success Callback (Queries DB by refId & Triggers Notifications)
+// 2. Redirect Success Callback (Handles immediate user landing, fallback sync, & email dispatch)
 app.get('/api/payments/yoco/success', async (req, res) => {
     const { refId } = req.query;
 
@@ -379,69 +363,44 @@ app.get('/api/payments/yoco/success', async (req, res) => {
     }
 
     try {
-        // Find pending bookings by ref_id
-        const { data: pendingBookings, error: fetchErr } = await supabase
+        const { data: bookings } = await supabase
             .from('bookings')
             .select('*')
             .eq('ref_id', refId);
 
-        if (fetchErr || !pendingBookings || pendingBookings.length === 0) {
-            console.error('No pending bookings found for RefID:', refId);
-            return res.redirect('/?payment=failed');
+        if (bookings && bookings.length > 0) {
+            if (bookings[0].status !== 'CONFIRMED') {
+                const { data: updatedBookings, error: updateErr } = await supabase
+                    .from('bookings')
+                    .update({
+                        status: 'CONFIRMED',
+                        payment_status: 'PAID',
+                        is_active: true
+                    })
+                    .eq('ref_id', refId)
+                    .select();
+
+                if (!updateErr && updatedBookings && updatedBookings.length > 0) {
+                    await sendBookingConfirmationEmail(updatedBookings);
+                }
+            }
         }
-
-        const alreadyConfirmed = pendingBookings[0].status === 'CONFIRMED';
-
-        // Confirm status and set active
-        const { error: updateErr } = await supabase
-            .from('bookings')
-            .update({
-                status: 'CONFIRMED',
-                payment_status: 'PAID',
-                is_active: true
-            })
-            .eq('ref_id', refId);
-
-        if (updateErr) {
-            console.error('Error updating booking status:', updateErr);
-            return res.redirect('/?payment=failed');
-        }
-
-        // Send Email Notification if not already sent
-        if (!alreadyConfirmed) {
-            const first = pendingBookings[0];
-            const tableIds = pendingBookings.map(b => b.table_id);
-            const totalPrice = pendingBookings.reduce((sum, b) => sum + (Number(b.total_price) || 0), 0);
-
-            sendBookingConfirmation({
-                ref_id: refId,
-                user_name: first.user_name,
-                phone: first.phone,
-                user_identifier: first.user_identifier,
-                booking_date: first.booking_date,
-                time_slot: first.time_slot,
-                table_ids: tableIds,
-                total_price: totalPrice
-            });
-        }
-
-        return res.redirect('/?payment=success');
-
     } catch (err) {
-        console.error('Error in Yoco success callback:', err);
-        return res.redirect('/?payment=failed');
+        console.error('Error in success redirect fallback verification & email dispatch:', err);
     }
+
+    return res.redirect(`/?payment=success&refId=${refId}`);
 });
 
-// 3. Webhook Handler Fallback
+// 3. Webhook Handler (Handles background asynchronous confirmation and email dispatch)
 app.post('/api/payments/yoco/webhook', async (req, res) => {
     try {
         const event = req.body;
 
-        if (event && event.type === 'payment.succeeded') {
-            const payload = event.payload || {};
+        if (event && (event.type === 'payment.succeeded' || event.type === 'payment_succeeded')) {
+            const payload = event.payload || event.data || {};
             const metadata = payload.metadata || {};
-            const refId = metadata.ref_id;
+            const refId = metadata.ref_id || payload.reference;
 
             if (refId) {
                 const { data: bookings } = await supabase
@@ -450,29 +409,19 @@ app.post('/api/payments/yoco/webhook', async (req, res) => {
                     .eq('ref_id', refId);
 
                 if (bookings && bookings.length > 0 && bookings[0].status !== 'CONFIRMED') {
-                    await supabase
+                    const { data: updatedBookings, error: updateErr } = await supabase
                         .from('bookings')
                         .update({
                             status: 'CONFIRMED',
                             payment_status: 'PAID',
                             is_active: true
                         })
-                        .eq('ref_id', refId);
+                        .eq('ref_id', refId)
+                        .select();
 
-                    const first = bookings[0];
-                    const tableIds = bookings.map(b => b.table_id);
-                    const totalPrice = bookings.reduce((sum, b) => sum + (Number(b.total_price) || 0), 0);
-
-                    sendBookingConfirmation({
-                        ref_id: refId,
-                        user_name: first.user_name,
-                        phone: first.phone,
-                        user_identifier: first.user_identifier,
-                        booking_date: first.booking_date,
-                        time_slot: first.time_slot,
-                        table_ids: tableIds,
-                        total_price: totalPrice
-                    });
+                    if (!updateErr && updatedBookings && updatedBookings.length > 0) {
+                        await sendBookingConfirmationEmail(updatedBookings);
+                    }
                 }
             }
         }
@@ -519,7 +468,7 @@ app.get('/api/admin/day-bookings', async (req, res) => {
     });
 });
 
-// EXECUTE ADMIN ACTION ITEM (WALK_IN, MAINTENANCE, RESERVED, CLEAR_TABLE)
+// EXECUTE ADMIN ACTION ITEM
 app.post('/api/admin/action-item', async (req, res) => {
     const { actionType, tables, slots, date, durationHours, startTimeOverride, paymentMethod, price } = req.body;
 
@@ -530,7 +479,6 @@ app.post('/api/admin/action-item', async (req, res) => {
     const slotStr = (slots && slots[0]) ? slots[0] : '';
     const targetRange = convertSlotToRange(slotStr, startTimeOverride, durationHours);
 
-    // 1. Handle CLEAR_TABLE Action
     if (actionType === 'CLEAR_TABLE') {
         const { data: activeBookings, error: fetchErr } = await supabase
             .from('bookings')
@@ -561,7 +509,6 @@ app.post('/api/admin/action-item', async (req, res) => {
         return res.json({ success: true, clearedCount: idsToClear.length });
     }
 
-    // 2. Conflict checking for creation actions
     const { data: activeBookings, error: fetchErr } = await supabase
         .from('bookings')
         .select('*')
@@ -583,7 +530,6 @@ app.post('/api/admin/action-item', async (req, res) => {
         }
     }
 
-    // 3. Fetch current table prices
     const { data: dbTables } = await supabase.from('pool_tables').select('id, price');
     const priceMap = {};
     (dbTables || []).forEach(t => priceMap[t.id] = Number(t.price) || 60);
@@ -643,7 +589,7 @@ app.post('/api/admin/action-item', async (req, res) => {
 
 // MONTHLY SUMMARY AGGREGATION
 app.get('/api/admin/month-summary', async (req, res) => {
-    const { month } = req.query; // YYYY-MM
+    const { month } = req.query;
     if (!month) return res.status(400).json({ error: 'Month parameter required (YYYY-MM)' });
 
     const startDate = `${month}-01`;
@@ -697,7 +643,7 @@ app.get('/api/admin/month-summary', async (req, res) => {
 
 // EXPORT MONTHLY BOOKINGS TO CSV
 app.get('/api/admin/export-month-csv', async (req, res) => {
-    const { month } = req.query; // YYYY-MM
+    const { month } = req.query;
     if (!month) return res.status(400).send('Month parameter required (YYYY-MM)');
 
     const startDate = `${month}-01`;
@@ -751,7 +697,7 @@ app.get('/api/admin/bookings', async (req, res) => {
     res.json(data || []);
 });
 
-// ADMIN OVERRIDE CREATE BOOKING (MANUAL ENTRY)
+// ADMIN OVERRIDE CREATE BOOKING
 app.post('/api/admin/bookings', async (req, res) => {
     const { table_id, booking_date, start_time, duration_hours, time_slot, user_name, phone, status } = req.body;
 
@@ -848,7 +794,7 @@ app.put('/api/admin/bookings/:id', async (req, res) => {
     res.json({ success: true, booking: data[0] });
 });
 
-// UPDATE BOOKING STATUS (CANCEL, CONFIRM, COMPLETE, EXPIRE)
+// UPDATE BOOKING STATUS
 app.patch('/api/admin/bookings/:id/status', async (req, res) => {
     const { id } = req.params;
     const { status, is_active } = req.body;
@@ -867,7 +813,7 @@ app.patch('/api/admin/bookings/:id/status', async (req, res) => {
     res.json(data[0]);
 });
 
-// MANAGE TABLES (ADMIN: UPDATE TABLE PRICE / MAINTENANCE STATUS)
+// MANAGE TABLES
 app.patch('/api/admin/tables/:id', async (req, res) => {
     const { id } = req.params;
     const { price, is_maintenance, table_type } = req.body;
@@ -887,7 +833,7 @@ app.patch('/api/admin/tables/:id', async (req, res) => {
     res.json(data[0]);
 });
 
-// DELETE BOOKING (ADMIN HARD REMOVAL)
+// DELETE BOOKING
 app.delete('/api/admin/bookings/:id', async (req, res) => {
     const { id } = req.params;
     const { error } = await supabase.from('bookings').delete().eq('id', id);
@@ -896,7 +842,7 @@ app.delete('/api/admin/bookings/:id', async (req, res) => {
     res.json({ success: true, message: `Booking ${id} permanently deleted.` });
 });
 
-// UPDATE BOOKING PAYMENT METHOD (CASH / CARD)
+// UPDATE BOOKING PAYMENT METHOD
 app.patch('/api/admin/bookings/:id/payment', async (req, res) => {
     const { id } = req.params;
     const { payment_method } = req.body;
