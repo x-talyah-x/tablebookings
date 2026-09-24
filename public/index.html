@@ -50,7 +50,6 @@
         justify-content: center;
     }
 
-    /* Uniform Table Dimensions: Matching all vertical tables perfectly */
     .table-frame-horizontal { width: 125px; height: 68px; }
     .table-frame-vertical { width: 68px; height: 120px; }
 
@@ -77,7 +76,6 @@
         cursor: pointer;
     }
     
-    /* Pool Cue Animation Modal Styles */
     #cue-animation-overlay {
         position: fixed;
         inset: 0;
@@ -104,7 +102,6 @@
         box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         overflow: hidden;
     }
-    /* Pocket indicator in top right */
     .pocket {
         position: absolute;
         top: 10px;
@@ -115,7 +112,6 @@
         border-radius: 50%;
         box-shadow: inset 0 2px 4px rgba(0,0,0,0.9);
     }
-    /* The White Ball */
     .cue-ball {
         position: absolute;
         bottom: 30px;
@@ -126,7 +122,6 @@
         border-radius: 50%;
         box-shadow: inset -2px -2px 4px rgba(0,0,0,0.4), 0 3px 6px rgba(0,0,0,0.4);
     }
-    /* The Cue Stick */
     .cue-stick {
         position: absolute;
         bottom: -40px;
@@ -141,67 +136,24 @@
     }
 
     @keyframes hitAndSink {
-        0% {
-            transform: translate(0, 0) scale(1);
-            animation-timing-function: ease-out;
-        }
-        28% {
-            /* Rest before impact */
-            transform: translate(0, 0) scale(1);
-            animation-timing-function: cubic-bezier(0.1, 0.9, 0.2, 1);
-        }
-        62% {
-            /* Rolls precisely to the rim/edge of the top-right pocket */
-            transform: translate(238px, -118px) scale(1);
-            animation-timing-function: ease-in;
-        }
-        82% {
-            /* Sinks completely down into the center of the pocket hole */
-            transform: translate(246px, -126px) scale(0.2);
-            opacity: 0.9;
-        }
-        100% {
-            /* Fully disappears under the pocket ledge */
-            transform: translate(248px, -128px) scale(0);
-            opacity: 0;
-        }
+        0% { transform: translate(0, 0) scale(1); animation-timing-function: ease-out; }
+        28% { transform: translate(0, 0) scale(1); animation-timing-function: cubic-bezier(0.1, 0.9, 0.2, 1); }
+        62% { transform: translate(238px, -118px) scale(1); animation-timing-function: ease-in; }
+        82% { transform: translate(246px, -126px) scale(0.2); opacity: 0.9; }
+        100% { transform: translate(248px, -128px) scale(0); opacity: 0; }
     }
 
     @keyframes cueStrike {
-        0% {
-            transform: translate(0, 0) rotate(-35deg);
-            animation-timing-function: ease-in;
-        }
-        18% {
-            /* Pullback wind-up */
-            transform: translate(-22px, 22px) rotate(-35deg);
-            animation-timing-function: cubic-bezier(0, 1, 0.2, 1);
-        }
-        28% {
-            /* Forward snap/strike impact */
-            transform: translate(45px, -45px) rotate(-35deg);
-        }
-        38% {
-            /* Natural recoil back after hitting the ball */
-            transform: translate(25px, -25px) rotate(-35deg);
-            opacity: 1;
-        }
-        70% {
-            transform: translate(25px, -25px) rotate(-35deg);
-            opacity: 1;
-        }
-        100% {
-            transform: translate(25px, -25px) rotate(-35deg);
-            opacity: 0;
-        }
+        0% { transform: translate(0, 0) rotate(-35deg); animation-timing-function: ease-in; }
+        18% { transform: translate(-22px, 22px) rotate(-35deg); animation-timing-function: cubic-bezier(0, 1, 0.2, 1); }
+        28% { transform: translate(45px, -45px) rotate(-35deg); }
+        38% { transform: translate(25px, -25px) rotate(-35deg); opacity: 1; }
+        70% { transform: translate(25px, -25px) rotate(-35deg); opacity: 1; }
+        100% { transform: translate(25px, -25px) rotate(-35deg); opacity: 0; }
     }
 
-    .animate-ball {
-        animation: hitAndSink 1.6s forwards;
-    }
-    .animate-cue {
-        animation: cueStrike 1.6s forwards;
-    }
+    .animate-ball { animation: hitAndSink 1.6s forwards; }
+    .animate-cue { animation: cueStrike 1.6s forwards; }
 </style>
 </head>
 <body class="min-h-screen flex flex-col bg-[#0b0f17] pb-24 md:pb-0">
@@ -299,7 +251,6 @@
             <div class="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
                 <div class="floorplan-grid min-w-[780px] md:min-w-[960px] mx-auto py-2">
                     
-                    <!-- Table Type Key Row Above Mens, Stage & Ladies -->
                     <div class="col-span-4 col-start-2 row-start-1 bg-gray-900/90 border border-gray-800 rounded-xl px-4 py-1.5 flex items-center justify-between text-xs text-gray-300">
                         <span class="text-gray-400 font-semibold text-[10px] md:text-[11px] uppercase tracking-wider">Main Arena Table Types:</span>
                         <div class="flex items-center gap-4">
@@ -318,11 +269,9 @@
                     <div class="zone-stage rounded-xl text-amber-400 font-bold text-xs md:text-sm flex items-center justify-center col-span-2 col-start-3 row-start-2">STAGE</div>
                     <div class="zone-restroom rounded-xl text-sky-400 font-semibold text-[10px] md:text-xs flex items-center justify-center col-start-5 row-start-2">Ladies</div>
                     
-                    <!-- Heyball & 9-Ball Section Container with Key, Table Grid & Bottom Entrance/Exit -->
                     <div class="zone-heyball rounded-2xl p-2 md:p-3 text-gray-300 font-bold text-[10px] md:text-xs flex flex-col justify-between items-center text-center col-start-1 row-start-2 row-span-7 overflow-y-auto">
                         <div class="w-full border-b border-gray-600/30 pb-2 mb-2 shrink-0">
                             <span class="text-xs md:text-sm block text-gray-200">Heyball & 9-Ball Zone</span>
-                            <!-- Zone Color Key -->
                             <div class="flex items-center justify-center gap-2 mt-1.5 text-[9px] md:text-[10px] font-normal text-gray-400">
                                 <div class="flex items-center gap-1">
                                     <span class="type-key-box bg-emerald-600 border border-emerald-400 w-2.5 h-2.5"></span>
@@ -336,7 +285,6 @@
                         </div>
                         <div id="heyball-zone-container" class="grid grid-cols-2 gap-2 md:gap-3 w-full my-auto justify-items-center"></div>
                         
-                        <!-- Entrance / Exit directly below Tables 23 & 24 -->
                         <div class="w-full mt-3 pt-2 border-t border-gray-600/30 shrink-0">
                             <div class="zone-door rounded-xl p-1.5 text-amber-300 font-bold text-[10px] md:text-xs flex items-center justify-center gap-1 w-full uppercase tracking-wider">
                                 <i data-lucide="door-open" class="w-3.5 h-3.5"></i>
@@ -351,10 +299,10 @@
                         Entrance / Exit
                     </div>
                     <div class="zone-door rounded-xl p-1.5 text-amber-300 font-bold text-[8px] md:text-xs flex items-center justify-center gap-1 text-center col-start-3 row-start-9 uppercase tracking-wider">
-            <i data-lucide="door-open" class="w-3.5 h-3.5"></i>
-            Entrance / Exit
-        </div>
-                            <div class="zone-counter rounded-xl text-amber-400 font-bold text-[10px] md:text-xs flex items-center justify-center col-span-2 col-start-4 row-start-9">Counter</div>
+                        <i data-lucide="door-open" class="w-3.5 h-3.5"></i>
+                        Entrance / Exit
+                    </div>
+                    <div class="zone-counter rounded-xl text-amber-400 font-bold text-[10px] md:text-xs flex items-center justify-center col-span-2 col-start-4 row-start-9">Counter</div>
                 </div>
             </div>
         </section>
@@ -423,12 +371,12 @@
                     <input type="text" id="form-user-name" required placeholder="John Doe" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
                 </div>
                 <div>
-                    <label class="block text-[10px] uppercase font-semibold text-gray-400 mb-1">Phone Number</label>
-                    <input type="tel" id="form-user-phone" required placeholder="082 123 4567" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
+                    <label class="block text-[10px] uppercase font-semibold text-gray-400 mb-1">Email (For Confirmation & Updates)</label>
+                    <input type="email" id="form-user-email" required placeholder="john@example.com" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
                 </div>
                 <div>
-                    <label class="block text-[10px] uppercase font-semibold text-gray-400 mb-1">Email Address (Email Confirmations)</label>
-                    <input type="email" id="form-user-email" required placeholder="john@example.com" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
+                    <label class="block text-[10px] uppercase font-semibold text-gray-400 mb-1">Phone Number</label>
+                    <input type="tel" id="form-user-phone" required placeholder="082 123 4567" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
                 </div>
 
                 <div class="flex gap-2 pt-2">
@@ -445,16 +393,16 @@
     </div>
 
     <!-- Pool Cue Animation Modal -->
-     <div id="cue-animation-overlay">
-    <div class="text-center space-y-4">
-        <div class="pool-table-canvas mx-auto">
-            <div class="pocket"></div>
-            <div id="animated-ball" class="cue-ball"></div>
-            <div id="animated-cue" class="cue-stick"></div>
-        </div>
-        <div class="space-y-1">
-            <h3 class="text-lg font-bold text-white">Booking Confirmed! 🎱</h3>
-                <p class="text-xs text-emerald-400">Your table has been successfully reserved.</p>
+    <div id="cue-animation-overlay">
+        <div class="text-center space-y-4">
+            <div class="pool-table-canvas mx-auto">
+                <div class="pocket"></div>
+                <div id="animated-ball" class="cue-ball"></div>
+                <div id="animated-cue" class="cue-stick"></div>
+            </div>
+            <div class="space-y-1">
+                <h3 class="text-lg font-bold text-white">Booking Confirmed! 🎱</h3>
+                <p class="text-xs text-emerald-400">Your table has been successfully reserved and confirmation email sent.</p>
             </div>
         </div>
     </div>
@@ -681,17 +629,15 @@
             const ball = document.getElementById('animated-ball');
             const cue = document.getElementById('animated-cue');
 
-            // Reset classes to restart animation if needed
             ball.classList.remove('animate-ball');
             cue.classList.remove('animate-cue');
-            void ball.offsetWidth; // trigger reflow
+            void ball.offsetWidth;
             void cue.offsetWidth;
 
             overlay.classList.add('active');
             ball.classList.add('animate-ball');
             cue.classList.add('animate-cue');
 
-            // After animation finishes (1.8s), hide overlay and execute callback
             setTimeout(() => {
                 overlay.classList.remove('active');
                 if (onComplete) onComplete();
@@ -831,13 +777,13 @@
 
         async function handleYocoPayment() {
             const nameInput = document.getElementById('form-user-name');
-            const phoneInput = document.getElementById('form-user-phone');
             const emailInput = document.getElementById('form-user-email');
+            const phoneInput = document.getElementById('form-user-phone');
 
-            if (!nameInput.checkValidity() || !phoneInput.checkValidity() || !emailInput.checkValidity()) {
+            if (!nameInput.checkValidity() || !emailInput.checkValidity() || !phoneInput.checkValidity()) {
                 nameInput.reportValidity();
-                phoneInput.reportValidity();
                 emailInput.reportValidity();
+                phoneInput.reportValidity();
                 return;
             }
 
@@ -853,8 +799,9 @@
                 durationHours: appState.durationHours,
                 slot: getFormattedSlot(),
                 userName: nameInput.value,
-                phone: phoneInput.value,
+                userEmail: emailInput.value,
                 userIdentifier: emailInput.value,
+                phone: phoneInput.value,
                 userId: userId,
                 bookingFeePerHour: 15
             };
