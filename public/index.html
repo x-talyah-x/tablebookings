@@ -371,10 +371,6 @@
                     <input type="text" id="form-user-name" required placeholder="John Doe" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
                 </div>
                 <div>
-                    <label class="block text-[10px] uppercase font-semibold text-gray-400 mb-1">Email (For Confirmation & Updates)</label>
-                    <input type="email" id="form-user-email" required placeholder="john@example.com" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
-                </div>
-                <div>
                     <label class="block text-[10px] uppercase font-semibold text-gray-400 mb-1">Phone Number</label>
                     <input type="tel" id="form-user-phone" required placeholder="082 123 4567" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
                 </div>
@@ -392,9 +388,9 @@
         </div>
     </div>
 
-    <!-- Pool Cue Animation Modal -->
+    <!-- Pool Cue Animation & Receipt Preview Overlay -->
     <div id="cue-animation-overlay">
-        <div class="text-center space-y-4">
+        <div id="animation-container" class="text-center space-y-4">
             <div class="pool-table-canvas mx-auto">
                 <div class="pocket"></div>
                 <div id="animated-ball" class="cue-ball"></div>
@@ -402,7 +398,34 @@
             </div>
             <div class="space-y-1">
                 <h3 class="text-lg font-bold text-white">Booking Confirmed! 🎱</h3>
-                <p class="text-xs text-emerald-400">Your table has been successfully reserved and confirmation email sent.</p>
+                <p class="text-xs text-emerald-400">Your table has been successfully reserved.</p>
+            </div>
+        </div>
+
+        <!-- Receipt Preview Card (Hidden initially, shown after animation) -->
+        <div id="receipt-preview-card" class="hidden bg-gray-900 border border-felt-600 rounded-2xl p-6 max-w-sm w-full mx-4 text-left shadow-2xl relative">
+            <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-felt-600 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-0.5 rounded-full">
+                Official Receipt
+            </div>
+            <div class="text-center pb-4 border-b border-gray-800 mt-2">
+                <h2 class="text-base font-extrabold text-white">TEE'S 🎱 CUEFLIX</h2>
+                <p class="text-[11px] text-gray-400">Basil's Billiards Bookings</p>
+            </div>
+            <div class="py-4 space-y-2 text-xs text-gray-300">
+                <div class="flex justify-between"><span class="text-gray-500">Reference:</span> <span id="receipt-ref" class="font-mono text-felt-400 font-bold">--</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Name:</span> <span id="receipt-name" class="font-medium text-white">--</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Date:</span> <span id="receipt-date" class="font-medium text-white">--</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Time Slot:</span> <span id="receipt-slot" class="font-medium text-white">--</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Tables:</span> <span id="receipt-tables" class="font-medium text-white">--</span></div>
+                <div class="flex justify-between pt-2 border-t border-gray-800 font-bold text-sm">
+                    <span class="text-white">Total Paid:</span> <span id="receipt-total" class="text-felt-400">R0</span>
+                </div>
+            </div>
+            <div class="pt-2 text-center">
+                <p class="text-[10px] text-amber-400 mb-3">📸 Screenshot this receipt for entry verification at the counter.</p>
+                <button onclick="window.location.href='/'" class="w-full py-2.5 bg-felt-600 hover:bg-felt-500 rounded-xl text-white font-bold text-xs">
+                    Done / Book Another
+                </button>
             </div>
         </div>
     </div>
@@ -469,11 +492,27 @@
 
             const urlParams = new URLSearchParams(window.location.search);
             const paymentStatus = urlParams.get('payment');
+            const refId = urlParams.get('refId');
 
             if (paymentStatus === 'success') {
-               showBookingSuccessAnimation(() => {
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                });
+                // Fetch booking details for receipt preview
+                try {
+                    const res = await fetch(`/api/bookings/lookup?refId=${refId}`);
+                    const data = await res.json();
+                    if (data && data.success) {
+                        showBookingSuccessAnimation(data.receiptData, () => {
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                        });
+                    } else {
+                        showBookingSuccessAnimation({ ref_id: refId, user_name: 'Valued Customer', booking_date: appState.selectedDate, time_slot: getFormattedSlot(), table_display: 'See Counter', total_paid: '0' }, () => {
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                        });
+                    }
+                } catch (e) {
+                    showBookingSuccessAnimation({ ref_id: refId, user_name: 'Valued Customer', booking_date: appState.selectedDate, time_slot: getFormattedSlot(), table_display: 'See Counter', total_paid: '0' }, () => {
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    });
+                }
             } else if (paymentStatus === 'cancelled') {
                 alert('Payment was cancelled. You can try again when you are ready.');
                 window.history.replaceState({}, document.title, window.location.pathname);
@@ -624,10 +663,15 @@
             });
         }
 
-        function showBookingSuccessAnimation(onComplete) {
+        function showBookingSuccessAnimation(bookingDetails, onComplete) {
             const overlay = document.getElementById('cue-animation-overlay');
+            const animContainer = document.getElementById('animation-container');
+            const receiptCard = document.getElementById('receipt-preview-card');
             const ball = document.getElementById('animated-ball');
             const cue = document.getElementById('animated-cue');
+
+            animContainer.classList.remove('hidden');
+            receiptCard.classList.add('hidden');
 
             ball.classList.remove('animate-ball');
             cue.classList.remove('animate-cue');
@@ -639,9 +683,19 @@
             cue.classList.add('animate-cue');
 
             setTimeout(() => {
-                overlay.classList.remove('active');
+                animContainer.classList.add('hidden');
+                receiptCard.classList.remove('hidden');
+
+                if (bookingDetails) {
+                    document.getElementById('receipt-ref').innerText = bookingDetails.ref_id || 'YOC-XXXXXX';
+                    document.getElementById('receipt-name').innerText = bookingDetails.user_name || '--';
+                    document.getElementById('receipt-date').innerText = bookingDetails.booking_date || '--';
+                    document.getElementById('receipt-slot').innerText = bookingDetails.time_slot || '--';
+                    document.getElementById('receipt-tables').innerText = bookingDetails.table_display || '--';
+                    document.getElementById('receipt-total').innerText = `R${bookingDetails.total_paid || 0}`;
+                }
                 if (onComplete) onComplete();
-            }, 5000);
+            }, 4500);
         }
 
         function renderHeyballZone() {
@@ -777,12 +831,10 @@
 
         async function handleYocoPayment() {
             const nameInput = document.getElementById('form-user-name');
-            const emailInput = document.getElementById('form-user-email');
             const phoneInput = document.getElementById('form-user-phone');
 
-            if (!nameInput.checkValidity() || !emailInput.checkValidity() || !phoneInput.checkValidity()) {
+            if (!nameInput.checkValidity() || !phoneInput.checkValidity()) {
                 nameInput.reportValidity();
-                emailInput.reportValidity();
                 phoneInput.reportValidity();
                 return;
             }
@@ -799,8 +851,7 @@
                 durationHours: appState.durationHours,
                 slot: getFormattedSlot(),
                 userName: nameInput.value,
-                userEmail: emailInput.value,
-                userIdentifier: emailInput.value,
+                userIdentifier: 'GUEST_USER',
                 phone: phoneInput.value,
                 userId: userId,
                 bookingFeePerHour: 15
