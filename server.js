@@ -80,6 +80,7 @@ function escapeCSV(val) {
 
 // Helper function to send booking confirmation emails
 async function sendBookingConfirmationEmail(updatedBookings) {
+    console.log("Email is sending");
     if (!updatedBookings || updatedBookings.length === 0) return;
 
     const primaryBooking = updatedBookings[0];
