@@ -3,7 +3,6 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
-const nodemailer = require('nodemailer');
 
 const app = express();
 
@@ -17,20 +16,6 @@ app.use(express.static('public'));
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
-
-// Setup Nodemailer transport using your SMTP environment variables
-const transporter = nodemailer.createTransport({
-  host: '142.250.31.109', // Hardcoded Google SMTP IPv4 address
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  tls: {
-    servername: 'smtp.gmail.com' // Crucial: validates the SSL certificate against the real domain
-  }
-});
 
 // Explicit route for admin dashboard page
 app.get('/admin', (req, res) => {
@@ -79,45 +64,6 @@ function escapeCSV(val) {
     if (val === null || val === undefined) return '""';
     const str = String(val).replace(/"/g, '""');
     return `"${str}"`;
-}
-
-// Helper function to send booking confirmation emails
-async function sendBookingConfirmationEmail(updatedBookings) {
-    console.log("Email is sending");
-    if (!updatedBookings || updatedBookings.length === 0) return;
-
-    const primaryBooking = updatedBookings[0];
-    const tableDisplayNames = updatedBookings.map(b => b.table_id).join(', ');
-    const totalPaid = updatedBookings.reduce((sum, b) => sum + (Number(b.total_price) || 0), 0);
-
-    if (primaryBooking.user_identifier && primaryBooking.user_identifier !== 'GUEST_USER') {
-        try {
-            await transporter.sendMail({
-                from: `"Tee's Cueflix" <${process.env.SMTP_USER}>`,
-                to: primaryBooking.user_identifier,
-                subject: `Booking Confirmed! Ref: ${primaryBooking.ref_id}`,
-                html: `
-                   <div style="font-family: Arial, sans-serif; background-color: #0b0f17; color: #ffffff; padding: 24px; border-radius: 12px; max-width: 600px; margin: 0 auto;">
-                    <h2 style="color: #10b981; margin-top: 0;">Booking Confirmed!</h2>
-                    <p>Hi <strong>${primaryBooking.user_name}</strong>,</p>
-                    <p>Thank you for reserving with Tee's Cueflix. Here are your booking details:</p>
-                    <table style="width: 100%; border-collapse: collapse; margin-top: 15px; color: #ffffff;">
-                        <tr style="border-bottom: 1px solid #1f2937;"><td style="padding: 8px 0; font-weight: bold;">Reference ID:</td><td style="padding: 8px 0;">${primaryBooking.ref_id}</td></tr>
-                        <tr style="border-bottom: 1px solid #1f2937;"><td style="padding: 8px 0; font-weight: bold;">Date:</td><td style="padding: 8px 0;">${primaryBooking.booking_date}</td></tr>
-                        <tr style="border-bottom: 1px solid #1f2937;"><td style="padding: 8px 0; font-weight: bold;">Time Slot:</td><td style="padding: 8px 0;">${primaryBooking.time_slot || primaryBooking.start_time}</td></tr>
-                        <tr style="border-bottom: 1px solid #1f2937;"><td style="padding: 8px 0; font-weight: bold;">Table(s):</td><td style="padding: 8px 0;">${tableDisplayNames}</td></tr>
-                        <tr style="border-bottom: 1px solid #1f2937;"><td style="padding: 8px 0; font-weight: bold;">Total Paid:</td><td style="padding: 8px 0; color: #10b981; font-weight: bold;">R${totalPaid.toFixed(2)}</td></tr>
-                    </table>
-                    <br/>
-                     <p>Please have your booking details ready to show at the counter.</p>
-                    <p style="color: #9ca3af; font-size: 13px;">We look forward to seeing you on the felt!</p>
-                </div>
-                `
-            });
-        } catch (emailErr) {
-            console.error('Failed to send confirmation email:', emailErr);
-        }
-    }
 }
 
 // ==========================================
@@ -219,6 +165,37 @@ app.get('/api/weekly-availability', async (req, res) => {
     });
 
     res.json(result);
+});
+
+// LOOKUP BOOKINGS FOR RECEIPT PREVIEW
+app.get('/api/bookings/lookup', async (req, res) => {
+    const { refId } = req.query;
+    if (!refId) return res.status(400).json({ error: 'refId required' });
+
+    const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('ref_id', refId);
+
+    if (error || !data || data.length === 0) {
+        return res.json({ success: false });
+    }
+
+    const primary = data[0];
+    const tableDisplay = data.map(b => b.table_id).join(', ');
+    const totalPaid = data.reduce((sum, b) => sum + (Number(b.total_price) || 0), 0);
+
+    res.json({
+        success: true,
+        receiptData: {
+            ref_id: primary.ref_id,
+            user_name: primary.user_name,
+            booking_date: primary.booking_date,
+            time_slot: primary.time_slot || primary.start_time,
+            table_display: tableDisplay,
+            total_paid: totalPaid.toFixed(2)
+        }
+    });
 });
 
 // ==========================================
@@ -357,7 +334,7 @@ app.post('/api/payments/yoco/create-checkout', async (req, res) => {
     }
 });
 
-// 2. Redirect Success Callback (Handles immediate user landing, fallback sync, & email dispatch)
+// 2. Redirect Success Callback (Handles immediate user landing & fallback sync)
 app.get('/api/payments/yoco/success', async (req, res) => {
     const { refId } = req.query;
 
@@ -374,29 +351,24 @@ app.get('/api/payments/yoco/success', async (req, res) => {
 
         if (bookings && bookings.length > 0) {
             if (bookings[0].status !== 'CONFIRMED') {
-                const { data: updatedBookings, error: updateErr } = await supabase
+                await supabase
                     .from('bookings')
                     .update({
                         status: 'CONFIRMED',
                         payment_status: 'PAID',
                         is_active: true
                     })
-                    .eq('ref_id', refId)
-                    .select();
-
-                if (!updateErr && updatedBookings && updatedBookings.length > 0) {
-                    await sendBookingConfirmationEmail(updatedBookings);
-                }
+                    .eq('ref_id', refId);
             }
         }
     } catch (err) {
-        console.error('Error in success redirect fallback verification & email dispatch:', err);
+        console.error('Error in success redirect fallback verification:', err);
     }
 
     return res.redirect(`/?payment=success&refId=${refId}`);
 });
 
-// 3. Webhook Handler (Handles background asynchronous confirmation and email dispatch)
+// 3. Webhook Handler (Handles background asynchronous confirmation)
 app.post('/api/payments/yoco/webhook', async (req, res) => {
     try {
         const event = req.body;
@@ -413,19 +385,14 @@ app.post('/api/payments/yoco/webhook', async (req, res) => {
                     .eq('ref_id', refId);
 
                 if (bookings && bookings.length > 0 && bookings[0].status !== 'CONFIRMED') {
-                    const { data: updatedBookings, error: updateErr } = await supabase
+                    await supabase
                         .from('bookings')
                         .update({
                             status: 'CONFIRMED',
                             payment_status: 'PAID',
                             is_active: true
                         })
-                        .eq('ref_id', refId)
-                        .select();
-
-                    if (!updateErr && updatedBookings && updatedBookings.length > 0) {
-                        await sendBookingConfirmationEmail(updatedBookings);
-                    }
+                        .eq('ref_id', refId);
                 }
             }
         }
