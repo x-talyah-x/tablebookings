@@ -20,13 +20,17 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Setup Nodemailer transport using your SMTP environment variables
 const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: Number(process.env.SMTP_PORT) || 465,
-    secure: true, // true for port 465, false for other ports
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-    }
+  host: 'smtp.gmail.com',
+  port: 465,              // or 587
+  secure: true,           // true for 465, false for 587
+  logger: true,
+  debug: true,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+  // This forces Node.js to ignore IPv6 (AAAA records) and strictly use IPv4
+  family: 4 
 });
 
 // Explicit route for admin dashboard page
