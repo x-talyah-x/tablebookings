@@ -2,8 +2,8 @@
 <html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tee's 🎱 Cueflix - Pool Table Reservation System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tee's Cueflix - Admin Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -11,7 +11,7 @@
             theme: {
                 extend: {
                     colors: {
-                        felt: { 500: '#10b981', 600: '#059669', 800: '#065f46', 950: '#022c22' }
+                        felt: { 400: '#34d399', 500: '#10b981', 600: '#059669', 800: '#065f46', 950: '#022c22' }
                     }
                 }
             }
@@ -19,434 +19,401 @@
     </script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-<style>
-    body { font-family: 'Outfit', sans-serif; background-color: #0b0f17; color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
-    
-    /* Table Felt Themes */
-    .billiard-table-cloth-blue { background: radial-gradient(circle, #5982db 0%, #1d4ed8 70%, #006796 100%); }
-    .billiard-table-cloth-green { background: radial-gradient(circle, #059669 0%, #047857 70%, #064e3b 100%); }
-    .billiard-wood-frame { background: linear-gradient(145deg, #5c2d12, #2a1205); }
-
-    .floorplan-grid {
-        display: grid;
-        grid-template-columns: 210px repeat(4, 1fr) 110px;
-        grid-template-rows: 40px 40px repeat(6, 120px) 40px;
-        gap: 0.6rem;
-    }
-
-    @media (min-width: 768px) {
-        .floorplan-grid {
-            grid-template-columns: 260px repeat(4, 1fr) 130px;
-            grid-template-rows: 45px 50px repeat(6, 135px) 50px;
-            gap: 0.85rem;
+    <style>
+        body { font-family: 'Outfit', sans-serif; background-color: #0b0f17; color: #f3f4f6; }
+        @keyframes toastIn {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
-    }
+        .animate-toast { animation: toastIn 0.25s ease-out forwards; }
 
-    .table-slot-container {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
+        /* Table Felt Themes & Floorplan styles */
+        .billiard-table-cloth-blue { background: radial-gradient(circle, #5982db 0%, #1d4ed8 70%, #006796 100%); }
+        .billiard-table-cloth-green { background: radial-gradient(circle, #059669 0%, #047857 70%, #064e3b 100%); }
+        .billiard-wood-frame { background: linear-gradient(145deg, #5c2d12, #2a1205); }
 
-    .table-frame-horizontal { width: 125px; height: 68px; }
-    .table-frame-vertical { width: 68px; height: 120px; }
+        .floorplan-grid {
+            display: grid;
+            grid-template-columns: 210px repeat(4, 1fr) 110px;
+            grid-template-rows: 40px 40px repeat(6, 120px) 40px;
+            gap: 0.6rem;
+        }
 
-    @media (min-width: 768px) {
-        .table-frame-horizontal { width: 145px; height: 78px; }
-        .table-frame-vertical { width: 78px; height: 135px; }
-    }
+        @media (min-width: 768px) {
+            .floorplan-grid {
+                grid-template-columns: 260px repeat(4, 1fr) 130px;
+                grid-template-rows: 45px 50px repeat(6, 135px) 50px;
+                gap: 0.85rem;
+            }
+        }
 
-    .zone-heyball { background: rgba(55, 65, 81, 0.25); border: 1px dashed #6b7280; }
-    .zone-restroom { background: rgba(14, 165, 233, 0.15); border: 1px solid #0284c7; }
-    .zone-stage { background: rgba(234, 179, 8, 0.15); border: 1px solid #eab308; }
-    .zone-counter { background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; }
-    .zone-door { background: rgba(245, 158, 11, 0.2); border: 1px dashed #f59e0b; }
+        .table-slot-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-    .availability-key { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-    .available-key { background: #10b981; }
-    .booked-key { background: #ef4444; }
+        .table-frame-horizontal { width: 125px; height: 68px; }
+        .table-frame-vertical { width: 68px; height: 120px; }
 
-    .type-key-box { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+        @media (min-width: 768px) {
+            .table-frame-horizontal { width: 145px; height: 78px; }
+            .table-frame-vertical { width: 78px; height: 135px; }
+        }
 
-    input[type="date"]::-webkit-calendar-picker-indicator,
-    input[type="time"]::-webkit-calendar-picker-indicator {
-        filter: invert(1);
-        cursor: pointer;
-    }
-    
-    #cue-animation-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.85);
-        z-index: 9999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
-    }
-    #cue-animation-overlay.active {
-        opacity: 1;
-        pointer-events: auto;
-    }
-    .pool-table-canvas {
-        position: relative;
-        width: 320px;
-        height: 180px;
-        background: radial-gradient(circle, #059669 0%, #064e3b 100%);
-        border: 8px solid #5c2d12;
-        border-radius: 12px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        overflow: hidden;
-    }
-    .pocket {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        width: 24px;
-        height: 24px;
-        background: #022c22;
-        border-radius: 50%;
-        box-shadow: inset 0 2px 4px rgba(0,0,0,0.9);
-    }
-    .cue-ball {
-        position: absolute;
-        bottom: 30px;
-        left: 40px;
-        width: 20px;
-        height: 20px;
-        background: radial-gradient(circle at 35% 35%, #ffffff 0%, #e2e8f0 60%, #94a3b8 100%);
-        border-radius: 50%;
-        box-shadow: inset -2px -2px 4px rgba(0,0,0,0.4), 0 3px 6px rgba(0,0,0,0.4);
-    }
-    .cue-stick {
-        position: absolute;
-        bottom: -40px;
-        left: -120px;
-        width: 160px;
-        height: 6px;
-        background: linear-gradient(90deg, #d97706, #92400e, #451a03);
-        border-radius: 3px;
-        transform: rotate(-35deg);
-        transform-origin: right center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-
-    @keyframes hitAndSink {
-        0% { transform: translate(0, 0) scale(1); animation-timing-function: ease-out; }
-        28% { transform: translate(0, 0) scale(1); animation-timing-function: cubic-bezier(0.1, 0.9, 0.2, 1); }
-        62% { transform: translate(238px, -118px) scale(1); animation-timing-function: ease-in; }
-        82% { transform: translate(246px, -126px) scale(0.2); opacity: 0.9; }
-        100% { transform: translate(248px, -128px) scale(0); opacity: 0; }
-    }
-
-    @keyframes cueStrike {
-        0% { transform: translate(0, 0) rotate(-35deg); animation-timing-function: ease-in; }
-        18% { transform: translate(-22px, 22px) rotate(-35deg); animation-timing-function: cubic-bezier(0, 1, 0.2, 1); }
-        28% { transform: translate(45px, -45px) rotate(-35deg); }
-        38% { transform: translate(25px, -25px) rotate(-35deg); opacity: 1; }
-        70% { transform: translate(25px, -25px) rotate(-35deg); opacity: 1; }
-        100% { transform: translate(25px, -25px) rotate(-35deg); opacity: 0; }
-    }
-
-    .animate-ball { animation: hitAndSink 1.6s forwards; }
-    .animate-cue { animation: cueStrike 1.6s forwards; }
-</style>
+        .zone-heyball { background: rgba(55, 65, 81, 0.25); border: 1px dashed #6b7280; }
+        .zone-restroom { background: rgba(14, 165, 233, 0.15); border: 1px solid #0284c7; }
+        .zone-stage { background: rgba(234, 179, 8, 0.15); border: 1px solid #eab308; }
+        .zone-counter { background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; }
+        .zone-door { background: rgba(245, 158, 11, 0.2); border: 1px dashed #f59e0b; }
+        .type-key-box { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+    </style>
 </head>
-<body class="min-h-screen flex flex-col bg-[#0b0f17] pb-24 md:pb-0">
+<body class="min-h-screen flex flex-col md:flex-row relative">
 
-    <!-- Header -->
-    <header class="border-b border-gray-800 bg-gray-950/90 backdrop-blur-md sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-4 h-16 md:h-20 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <h1 class="text-lg md:text-xl font-extrabold tracking-tight text-white flex items-center gap-1.5">TEE's 🎱 <span class="text-felt-500 text-xs md:text-sm">Cueflix</span></h1>
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- LEFT SIDEBAR -->
+    <aside class="w-full md:w-64 border-b md:border-b-0 md:border-r border-gray-800 bg-gray-950/80 backdrop-blur-md flex-shrink-0 flex flex-col">
+        <div class="p-6 border-b border-gray-800/60 flex items-center gap-3">
+            <h1 class="text-xl font-extrabold tracking-tight text-white">Tee's 🎱 Cueflix <span class="text-amber-500 text-sm block md:inline">Admin</span></h1>
+        </div>
+
+        <nav class="p-4 flex flex-row md:flex-col space-x-2 md:space-x-0 md:space-y-2 overflow-x-auto md:overflow-x-visible">
+            <button id="tab-btn-matrix" onclick="switchAdminTab('matrix')" class="w-full text-left py-3 px-4 text-sm font-bold rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 transition-all whitespace-nowrap">Timeline Calendar View</button>
+            <button id="tab-btn-day-bookings" onclick="switchAdminTab('day-bookings')" class="w-full text-left py-3 px-4 text-sm font-bold rounded-xl text-gray-400 hover:text-white hover:bg-gray-900 transition-all whitespace-nowrap">Day Bookings</button>
+            <button id="tab-btn-actions" onclick="switchAdminTab('actions')" class="w-full text-left py-3 px-4 text-sm font-bold rounded-xl text-gray-400 hover:text-white hover:bg-gray-900 transition-all whitespace-nowrap">Capture Tables</button>
+            <button id="tab-btn-month" onclick="switchAdminTab('month')" class="w-full text-left py-3 px-4 text-sm font-bold rounded-xl text-gray-400 hover:text-white hover:bg-gray-900 transition-all whitespace-nowrap">Monthly Overview</button>
+        </nav>
+    </aside>
+
+    <main class="flex-1 p-4 md:p-8 w-full space-y-8 overflow-y-auto">
+        
+        <div class="bg-gray-900/80 rounded-2xl p-4 border border-gray-800 flex flex-wrap gap-4 items-center justify-between">
+            <div class="flex gap-4 items-center">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Select Date to view bookings</label>
+                    <input type="date" id="selected-date" class="bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
+                </div>
             </div>
-            <div class="text-[11px] md:text-xs text-gray-400 text-right">
-                <span>Basil's Billiards Bookings</span>
+            <div class="flex items-center gap-4 text-xs">
+                <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-500/80 border border-rose-400"></span><span class="text-gray-400">League / Reserved</span></div>
+                <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-500/80 border border-blue-400"></span><span class="text-gray-400">Walk-In</span></div>
+                <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-gray-600 border border-gray-400"></span><span class="text-gray-400">Maintenance</span></div>
             </div>
         </div>
-    </header>
 
-    <!-- Main Content -->
-    <main class="flex-1 max-w-6xl w-full mx-auto px-3 md:px-6 py-4 md:py-8 pb-28">
+        <section id="admin-view" class="space-y-6">
 
-        <!-- Booking controls -->
-        <section class="bg-gray-900/90 rounded-2xl md:rounded-3xl border border-gray-800 p-4 md:p-6 mb-4 md:mb-6">
-            <div class="flex items-start justify-between gap-3 mb-4">
-                <div>
-                    <p class="text-felt-400 text-[10px] md:text-xs font-bold uppercase tracking-wider">Book a table</p>
-                    <h2 class="text-lg md:text-2xl font-bold text-white mt-1">When are you playing?</h2>
-                    <p class="text-xs md:text-sm text-gray-400 mt-1">Select your exact date and time. Bookings are reserved in 1-hour slots.</p>
-                </div>
-                <div class="hidden sm:flex items-center gap-2 text-[10px] text-gray-400 bg-gray-950 border border-gray-800 rounded-xl px-3 py-2">
-                    <i data-lucide="clock" class="w-3.5 h-3.5 text-felt-500"></i>
-                    Operating Hours: 11am to 2am 
-                </div>
-            </div>
-
-            <!-- Date, Time, and Duration Controls -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                    <label class="block text-[8px] uppercase font-bold text-gray-400 mb-2 tracking-wider">Select Date</label>
-                    <div class="relative">
-                        <input type="date" id="selected-date" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm font-semibold text-white focus:outline-none focus:border-felt-500">
+            <!-- TAB 1: Timeline Matrix View -->
+            <div id="admin-tab-matrix" class="space-y-6">
+                <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 relative min-h-[300px]">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-white">Daily Visual Schedule</h3>
+                        <span id="matrix-date-label" class="text-xs font-semibold text-felt-400"></span>
                     </div>
-                </div>
-
-                <div>
-                    <label class="block text-[8px] uppercase font-bold text-gray-400 mb-2 tracking-wider">Start Time</label>
-                    <div class="relative">
-                        <input type="time" id="start-time" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm font-semibold text-white focus:outline-none focus:border-felt-500">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-[8px] uppercase font-bold text-gray-400 mb-2 tracking-wider">Duration (1hr Block Slots)</label>
-                    <select id="duration-hours" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm font-semibold text-white focus:outline-none focus:border-felt-500">
-                        <option value="1" selected>1 Hour Slot</option>
-                        <option value="2">2 Hour Slots</option>
-                        <option value="3">3 Hour Slots</option>
-                        <option value="4">4 Hour Slots</option>
-                        <option value="5">5 Hour Slots</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="mt-4 flex items-center justify-between rounded-xl bg-felt-950/60 border border-felt-800/60 px-3 py-2.5">
-                <div class="flex items-center gap-2">
-                    <i data-lucide="calendar-clock" class="w-4 h-4 text-felt-400"></i>
-                    <span class="text-xs text-gray-300">Selected Time Window</span>
-                </div>
-                <span id="slot-preview" class="text-xs font-bold text-felt-400">--</span>
-            </div>
-        </section>
-
-        <!-- Availability summary -->
-        <section class="mb-3 space-y-2">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h3 class="text-sm md:text-base font-bold text-white">Available tables</h3>
-                    <p id="availability-summary" class="text-[11px] md:text-xs text-gray-500 mt-0.5">Checking availability…</p>
-                </div>
-                <div class="flex items-center gap-2 text-[10px] text-gray-500">
-                    <span class="availability-key available-key"></span> Available
-                    <span class="availability-key booked-key ml-1"></span> Booked
-                </div>
-            </div>
-        </section>
-
-        <!-- Visual table layout -->
-        <section class="bg-gray-900/50 rounded-2xl md:rounded-3xl border border-gray-800 p-3 md:p-6">
-            <div class="flex items-center justify-between mb-3">
-                <div class="text-[10px] md:text-xs text-gray-500 flex items-center gap-2">
-                    <i data-lucide="touch-pointer" class="w-3.5 h-3.5"></i>
-                    Tap tables to select one or more
-                </div>
-                <button id="clear-selection-btn" class="text-[10px] md:text-xs text-gray-400 hover:text-white hidden">Clear selection</button>
-            </div>
-
-            <div class="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
-                <div class="floorplan-grid min-w-[780px] md:min-w-[960px] mx-auto py-2">
                     
-                    <div class="col-span-4 col-start-2 row-start-1 bg-gray-900/90 border border-gray-800 rounded-xl px-4 py-1.5 flex items-center justify-between text-xs text-gray-300">
-                        <span class="text-gray-400 font-semibold text-[10px] md:text-[11px] uppercase tracking-wider">Main Arena Table Types:</span>
-                        <div class="flex items-center gap-4">
-                            <div class="flex items-center gap-1.5">
-                                <span class="type-key-box bg-blue-600 border border-blue-400"></span>
-                                <span class="text-[10px] md:text-xs font-medium">Blue: Blackball Tables</span>
+                    <div class="overflow-x-auto">
+                        <div class="inline-block min-w-[1000px] w-full">
+                            <div id="timeline-header" class="flex border-b border-gray-800 pb-2 mb-2 text-xs font-semibold text-gray-400"></div>
+                            <div id="timeline-rows" class="space-y-2 relative min-h-[200px]"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: Day Bookings -->
+            <div id="admin-tab-day-bookings" class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hidden">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <h3 class="text-lg font-bold text-white">Day Bookings</h3>
+
+                    <div class="flex items-center gap-3">
+                        <div class="bg-gray-950 border border-amber-500/30 rounded-xl px-4 py-2 flex items-center gap-3">
+                            <i data-lucide="banknote" class="w-5 h-5 text-amber-400"></i>
+                            <div>
+                                <span class="text-[10px] font-semibold uppercase text-gray-400 block">Day Cash Total</span>
+                                <p id="day-total-cash" class="text-sm font-extrabold text-amber-400">R0.00</p>
                             </div>
-                            <div class="flex items-center gap-1.5">
-                                <span class="type-key-box bg-emerald-600 border border-emerald-400"></span>
-                                <span class="text-[10px] md:text-xs font-medium">Green: Rasson Tables</span>
+                        </div>
+                        <div class="bg-gray-950 border border-blue-500/30 rounded-xl px-4 py-2 flex items-center gap-3">
+                            <i data-lucide="credit-card" class="w-5 h-5 text-blue-400"></i>
+                            <div>
+                                <span class="text-[10px] font-semibold uppercase text-gray-400 block">Day Card Total</span>
+                                <p id="day-total-card" class="text-sm font-extrabold text-blue-400">R0.00</p>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="zone-restroom rounded-xl text-sky-400 font-semibold text-[10px] md:text-xs flex items-center justify-center col-start-2 row-start-2">Mens</div>
-                    <div class="zone-stage rounded-xl text-amber-400 font-bold text-xs md:text-sm flex items-center justify-center col-span-2 col-start-3 row-start-2">STAGE</div>
-                    <div class="zone-restroom rounded-xl text-sky-400 font-semibold text-[10px] md:text-xs flex items-center justify-center col-start-5 row-start-2">Ladies</div>
-                    
-                    <div class="zone-heyball rounded-2xl p-2 md:p-3 text-gray-300 font-bold text-[10px] md:text-xs flex flex-col justify-between items-center text-center col-start-1 row-start-2 row-span-7 overflow-y-auto">
-                        <div class="w-full border-b border-gray-600/30 pb-2 mb-2 shrink-0">
-                            <span class="text-xs md:text-sm block text-gray-200">Heyball & 9-Ball Zone</span>
-                            <div class="flex items-center justify-center gap-2 mt-1.5 text-[9px] md:text-[10px] font-normal text-gray-400">
-                                <div class="flex items-center gap-1">
-                                    <span class="type-key-box bg-emerald-600 border border-emerald-400 w-2.5 h-2.5"></span>
-                                    <span>Chinese Heyball</span>
-                                </div>
-                                <div class="flex items-center gap-1">
-                                    <span class="type-key-box bg-blue-600 border border-blue-400 w-2.5 h-2.5"></span>
-                                    <span>American 9ball</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="heyball-zone-container" class="grid grid-cols-2 gap-2 md:gap-3 w-full my-auto justify-items-center"></div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-gray-300">
+                        <thead class="bg-gray-950 text-xs font-semibold text-gray-400 uppercase border-b border-gray-800">
+                            <tr>
+                                <th class="p-3">Ref ID</th>
+                                <th class="p-3">User / Type</th>
+                                <th class="p-3">Phone</th>
+                                <th class="p-3">Time Slot</th>
+                                <th class="p-3">Table</th>
+                                <th class="p-3">Payment Method</th>
+                                <th class="p-3">Total Amount</th>
+                                <th class="p-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-bookings-list" class="divide-y divide-gray-800/60"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 3: Capture Tables / Actions Form -->
+            <div id="admin-tab-actions" class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hidden space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div>
+                        <h3 class="text-lg font-bold text-amber-400">Admin Action Management</h3>
+                        <p class="text-xs text-gray-400 mt-0.5">Select tables from the interactive floorplan below and choose your admin action.</p>
+                    </div>
+                    <button type="button" id="clear-admin-selection-btn" onclick="clearAdminSelection()" class="text-xs text-gray-300 hover:text-white px-3 py-1.5 bg-gray-950 border border-gray-700 rounded-xl hidden transition-all">Clear selection</button>
+                </div>
+
+                <!-- Interactive Floorplan Selection Area -->
+                <div class="bg-gray-950/90 rounded-2xl border border-gray-800 p-4 overflow-x-auto">
+                    <div class="floorplan-grid min-w-[780px] md:min-w-[960px] mx-auto py-2">
                         
-                        <div class="w-full mt-3 pt-2 border-t border-gray-600/30 shrink-0">
-                            <div class="zone-door rounded-xl p-1.5 text-amber-300 font-bold text-[10px] md:text-xs flex items-center justify-center gap-1 w-full uppercase tracking-wider">
-                                <i data-lucide="door-open" class="w-3.5 h-3.5"></i>
-                                Entrance / Exit
+                        <div class="col-span-4 col-start-2 row-start-1 bg-gray-900/90 border border-gray-800 rounded-xl px-4 py-1.5 flex items-center justify-between text-xs text-gray-300">
+                            <span class="text-gray-400 font-semibold text-[10px] md:text-[11px] uppercase tracking-wider">Main Arena Table Types:</span>
+                            <div class="flex items-center gap-4">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="type-key-box bg-blue-600 border border-blue-400"></span>
+                                    <span class="text-[10px] md:text-xs font-medium">Blue: Blackball Tables</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="type-key-box bg-emerald-600 border border-emerald-400"></span>
+                                    <span class="text-[10px] md:text-xs font-medium">Green: Rasson Tables</span>
+                                </div>
                             </div>
+                        </div>
+
+                        <div class="zone-restroom rounded-xl text-sky-400 font-semibold text-[10px] md:text-xs flex items-center justify-center col-start-2 row-start-2">Mens</div>
+                        <div class="zone-stage rounded-xl text-amber-400 font-bold text-xs md:text-sm flex items-center justify-center col-span-2 col-start-3 row-start-2">STAGE</div>
+                        <div class="zone-restroom rounded-xl text-sky-400 font-semibold text-[10px] md:text-xs flex items-center justify-center col-start-5 row-start-2">Ladies</div>
+                        
+                        <div class="zone-heyball rounded-2xl p-2 md:p-3 text-gray-300 font-bold text-[10px] md:text-xs flex flex-col justify-between items-center text-center col-start-1 row-start-2 row-span-7 overflow-y-auto">
+                            <div class="w-full border-b border-gray-600/30 pb-2 mb-2 shrink-0">
+                                <span class="text-xs md:text-sm block text-gray-200">Heyball & 9-Ball Zone</span>
+                            </div>
+                            <div id="admin-heyball-zone-container" class="grid grid-cols-2 gap-2 md:gap-3 w-full my-auto justify-items-center"></div>
+                            
+                            <div class="w-full mt-3 pt-2 border-t border-gray-600/30 shrink-0">
+                                <div class="zone-door rounded-xl p-1.5 text-amber-300 font-bold text-[10px] md:text-xs flex items-center justify-center gap-1 w-full uppercase tracking-wider">
+                                    <i data-lucide="door-open" class="w-3.5 h-3.5"></i> Entrance
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="admin-table-node-container" class="contents"></div>
+                        <div class="zone-door rounded-xl p-1.5 text-amber-300 font-bold text-[8px] md:text-xs flex items-center justify-center gap-1 text-center col-start-6 row-start-6 row-span-2 uppercase tracking-wider">
+                            <i data-lucide="door-open" class="w-3.5 h-3.5"></i> Exit
+                        </div>
+                        <div class="zone-door rounded-xl p-1.5 text-amber-300 font-bold text-[8px] md:text-xs flex items-center justify-center gap-1 text-center col-start-3 row-start-9 uppercase tracking-wider">
+                            <i data-lucide="door-open" class="w-3.5 h-3.5"></i> Exit
+                        </div>
+                        <div class="zone-counter rounded-xl text-amber-400 font-bold text-[10px] md:text-xs flex items-center justify-center col-span-2 col-start-4 row-start-9">Counter</div>
+                    </div>
+                </div>
+
+                <!-- Action Form Controls -->
+                <form id="action-items-form" class="space-y-4 max-w-2xl mx-auto bg-gray-950 border border-gray-800 p-5 rounded-2xl relative">
+                    <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+                        <span class="text-xs font-bold text-amber-400 uppercase">Selected Tables for Action:</span>
+                        <span id="admin-selected-badge" class="text-xs font-bold text-white bg-gray-900 border border-gray-700 px-3 py-1 rounded-xl">0 tables selected</span>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Action Type</label>
+                        <select id="action-type" onchange="toggleActionFields()" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
+                            <option value="WALK_IN">Walk In (Starts Now)</option>
+                            <option value="MAINTENANCE">Log Maintenance (Until 11 PM)</option>
+                            <option value="RESERVED">Reserve Tables for League</option>
+                            <option value="CLEAR_TABLE">Clear Booking</option>
+                        </select>
+                    </div>
+
+                    <!-- CONDITIONAL TIME FIELDS -->
+                    <div id="time-range-fields" class="grid grid-cols-2 gap-4 hidden">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Start Time</label>
+                            <input type="time" id="action-start-time" value="11:00" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
+                        </div>
+                        <div id="duration-field-wrapper">
+                            <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Duration (Hours)</label>
+                            <input type="number" id="action-duration" min="1" max="12" value="2" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
                         </div>
                     </div>
 
-                    <div id="table-node-container" class="contents"></div>
-                    <div class="zone-door rounded-xl p-1.5 text-amber-300 font-bold text-[8px] md:text-xs flex items-center justify-center gap-1 text-center col-start-6 row-start-6 row-span-2 uppercase tracking-wider">
-                        <i data-lucide="door-open" class="w-3.5 h-3.5"></i>
-                        Entrance / Exit
+                    <div id="walkin-hours-field" class="block">
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Walk-In Duration (Hours)</label>
+                        <input type="number" id="walkin-duration" min="1" max="12" value="1" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
                     </div>
-                    <div class="zone-door rounded-xl p-1.5 text-amber-300 font-bold text-[8px] md:text-xs flex items-center justify-center gap-1 text-center col-start-3 row-start-9 uppercase tracking-wider">
-                        <i data-lucide="door-open" class="w-3.5 h-3.5"></i>
-                        Entrance / Exit
-                    </div>
-                    <div class="zone-counter rounded-xl text-amber-400 font-bold text-[10px] md:text-xs flex items-center justify-center col-span-2 col-start-4 row-start-9">Counter</div>
-                </div>
+
+                    <button type="submit" id="btn-submit-action" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-all flex items-center justify-center gap-2">
+                        <span>Apply Action Item</span>
+                    </button>
+                </form>
             </div>
+
+            <!-- TAB 4: Monthly Overview -->
+            <div id="admin-tab-month" class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-bold text-white">Monthly Booking & Payment Summary</h3>
+                    <div class="flex items-center gap-2">
+                        <input type="month" id="selected-month" onchange="loadMonthData()" class="bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
+                        <button onclick="downloadMonthlyCSV()" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs rounded-xl flex items-center gap-2 transition-all">
+                            <i data-lucide="download" class="w-4 h-4"></i> Download CSV
+                        </button>
+                    </div>
+                </div>
+                   
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-gray-950 border border-gray-800 rounded-xl p-4">
+                        <span class="text-xs font-semibold text-gray-400 uppercase">Total Revenue</span>
+                        <p id="month-total-rev" class="text-2xl font-extrabold text-felt-400 mt-1">R0.00</p>
+                    </div>
+                    <div class="bg-gray-950 border border-gray-800 rounded-xl p-4">
+                        <span class="text-xs font-semibold text-gray-400 uppercase">Cash Collected</span>
+                        <p id="month-total-cash" class="text-2xl font-extrabold text-amber-400 mt-1">R0.00</p>
+                    </div>
+                    <div class="bg-gray-950 border border-gray-800 rounded-xl p-4">
+                        <span class="text-xs font-semibold text-gray-400 uppercase">Card Payments</span>
+                        <p id="month-total-card" class="text-2xl font-extrabold text-blue-400 mt-1">R0.00</p>
+                    </div>
+                </div>
+
+                <div id="month-calendar-grid" class="grid grid-cols-7 gap-2 text-center text-xs min-h-[300px] relative"></div>
+            </div>
+
         </section>
 
-        <!-- Selected booking preview -->
-        <section id="selection-preview" class="hidden mt-4 bg-gray-900 border border-felt-800/70 rounded-2xl p-4">
-            <div class="flex items-center justify-between mb-3">
-                <div>
-                    <p class="text-[10px] uppercase font-bold text-felt-400">Your selection</p>
-                    <p id="selection-title" class="text-sm font-bold text-white mt-1">0 tables selected</p>
-                </div>
-                <span id="selection-total" class="text-lg font-extrabold text-felt-400">R0</span>
-            </div>
-            <div id="selected-table-chips" class="flex flex-wrap gap-2"></div>
-        </section>
     </main>
 
-    <!-- Mobile / desktop booking action bar -->
-    <div class="fixed bottom-0 left-0 right-0 bg-gray-950/95 border-t border-gray-800 p-3 md:p-4 z-30 backdrop-blur-md">
-        <div class="max-w-6xl mx-auto flex items-center justify-between gap-3">
-            <div class="min-w-0">
-                <div class="flex items-center gap-2">
-                    <span id="mobile-selected-count" class="text-sm font-bold text-white">0 tables selected</span>
-                    <span class="text-gray-700">•</span>
-                    <span id="bottom-slot" class="text-[11px] text-gray-400 truncate">Select time</span>
+    <!-- WALK-IN PAYMENT METHOD MODAL -->
+    <div id="payment-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-md w-full space-y-6">
+            <h3 class="text-xl font-bold text-white">Confirm Walk-In Payment</h3>
+            
+            <div class="bg-gray-950 rounded-xl p-4 border border-gray-800 space-y-2">
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-400">Calculated Total:</span>
+                    <span id="modal-calculated-price" class="font-bold text-felt-400 text-base">R0.00</span>
                 </div>
-                <p id="bottom-price" class="text-[10px] text-gray-500 mt-0.5">Choose one or more available tables</p>
+                <p class="text-xs text-gray-500">*Price dynamically calculated based on table rates and allocated hours.</p>
             </div>
-            <button id="mobile-multi-book-btn" disabled class="shrink-0 px-5 md:px-7 py-3 bg-felt-600 hover:bg-felt-500 active:bg-felt-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-white font-bold text-xs md:text-sm transition-all">
-                Proceed to Checkout
-                <i data-lucide="arrow-right" class="inline-block w-4 h-4 ml-1 align-middle"></i>
-            </button>
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase mb-2">Select Payment Method</label>
+                <div class="grid grid-cols-2 gap-4">
+                    <button type="button" id="btn-pay-cash" onclick="confirmWalkInWithPayment('CASH')" class="py-4 bg-gray-950 hover:bg-amber-500/10 border border-amber-500/40 rounded-xl text-amber-400 font-bold flex flex-col items-center justify-center gap-1 transition-all">
+                        <i data-lucide="banknote" class="w-6 h-6"></i>
+                        <span>CASH</span>
+                    </button>
+                    <button type="button" id="btn-pay-card" onclick="confirmWalkInWithPayment('CARD')" class="py-4 bg-gray-950 hover:bg-blue-500/10 border border-blue-500/40 rounded-xl text-blue-400 font-bold flex flex-col items-center justify-center gap-1 transition-all">
+                        <i data-lucide="credit-card" class="w-6 h-6"></i>
+                        <span>CARD</span>
+                    </button>
+                </div>
+            </div>
+
+            <button type="button" onclick="closePaymentModal()" class="w-full py-2 text-xs text-gray-400 hover:text-white transition-all">Cancel</button>
         </div>
     </div>
 
-    <!-- Modal: Book a Table Checkout Modal -->
-    <div id="booking-modal" class="fixed inset-0 bg-black/80 z-50 flex items-end md:items-center justify-center p-0 md:p-4 hidden transition-opacity">
-        <div class="bg-gray-900 border-t md:border border-gray-800 rounded-t-3xl md:rounded-2xl max-w-md w-full p-5 md:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div class="w-12 h-1 bg-gray-700 rounded-full mx-auto md:hidden"></div>
-            
-            <div class="flex justify-between items-start">
-                <div>
-                    <h3 class="text-base md:text-lg font-bold text-white">Book Table(s): <span id="modal-table-num" class="text-felt-400"></span></h3>
-                    <p class="text-xs text-gray-400 mt-0.5">Your booking information</p>
-                </div>
-                <button type="button" onclick="closeBookingModal()" class="text-gray-400 hover:text-white p-1">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
+    <!-- EDIT BOOKING MODAL -->
+    <div id="edit-booking-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-lg w-full space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold text-white">Edit Booking</h3>
+                <button onclick="closeEditModal()" class="text-gray-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
-            
-            <div class="bg-gray-950 border border-gray-800 rounded-xl p-3 text-xs space-y-1.5">
-                <div class="flex justify-between text-gray-400"><span>Date:</span> <span id="modal-date" class="text-white font-medium">--</span></div>
-                <div class="flex justify-between text-gray-400"><span>Time Slot:</span> <span id="modal-time-slot" class="text-white font-medium">--</span></div>
-                <div class="flex justify-between text-gray-400"><span>Duration:</span> <span id="modal-duration" class="text-white font-medium">--</span></div>
-                <div class="flex justify-between text-gray-400"><span>Tables:</span> <span id="modal-tables-count" class="text-white font-medium">--</span></div>
-                <div class="flex justify-between text-gray-400"><span>Subtotal:</span> <span id="modal-subtotal" class="text-white font-medium">R0</span></div>
-                <div class="flex justify-between text-gray-400"><span>Reservation Fee (R15 * hour):</span> <span class="text-amber-400" id="modal-booking-fee"></span></div>
-                <div class="border-t border-gray-800 pt-1.5 flex justify-between font-bold text-sm text-white"><span>Total Due:</span> <span id="modal-total-price" class="text-felt-400">R0</span></div>
-            </div>
-
-            <form id="booking-form" class="space-y-3" onsubmit="event.preventDefault(); handleYocoPayment();">
-                <p class="text-xs text-red-400 mt-0.5">Please note: Reservation fee is NOT refundable.</p>
-                <p class="text-xs text-gray-400 mt-0.5">Online payment is required to confirm your reservation via YOCO.</p>
-                <div>
-                    <label class="block text-[10px] uppercase font-semibold text-gray-400 mb-1">Full Name</label>
-                    <input type="text" id="form-user-name" required placeholder="John Doe" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
-                </div>
-                <div>
-                    <label class="block text-[10px] uppercase font-semibold text-gray-400 mb-1">Phone Number</label>
-                    <input type="tel" id="form-user-phone" required placeholder="082 123 4567" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-felt-500">
+            <form id="edit-booking-form" onsubmit="handleEditBookingSubmit(event)" class="space-y-4">
+                <input type="hidden" id="edit-booking-id">
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">User Name</label>
+                        <input type="text" id="edit-user-name" required class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Phone</label>
+                        <input type="text" id="edit-phone" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
+                    </div>
                 </div>
 
-                <div class="flex gap-2 pt-2">
-                    <button type="button" id="cancel-booking-btn" class="w-1/3 py-2.5 border border-gray-700 rounded-xl text-xs md:text-sm text-gray-300 active:bg-gray-800">
-                        Cancel
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Table</label>
+                        <select id="edit-table-id" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Date</label>
+                        <input type="date" id="edit-booking-date" required class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Time Slot</label>
+                        <input type="text" id="edit-time-slot" required placeholder="e.g. 11:00 AM - 01:00 PM" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Total Price (R)</label>
+                        <input type="number" step="0.01" id="edit-total-price" required class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Payment Method</label>
+                        <select id="edit-payment-method" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
+                            <option value="">Unpaid / None</option>
+                            <option value="CASH">CASH</option>
+                            <option value="CARD">CARD</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Status</label>
+                        <select id="edit-status" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
+                            <option value="CONFIRMED">CONFIRMED</option>
+                            <option value="WALK_IN">WALK_IN</option>
+                            <option value="RESERVED">RESERVED</option>
+                            <option value="MAINTENANCE">MAINTENANCE</option>
+                            <option value="CANCELLED">CANCELLED</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 pt-2">
+                    <button type="submit" id="btn-save-edit" class="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-all text-sm">
+                        Save Changes
                     </button>
-                    <button type="submit" id="pay-yoco-btn" class="w-2/3 py-2.5 bg-felt-600 hover:bg-felt-500 active:bg-felt-500 rounded-xl text-white font-bold text-xs md:text-sm flex justify-center items-center gap-1.5 shadow-lg transition-all">
-                        <i data-lucide="credit-card" class="w-4 h-4"></i>
-                        <span>Pay with YOCO</span>
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded-xl transition-all text-sm">
+                        Cancel
                     </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Pool Cue Animation & Receipt Preview Overlay -->
-    <div id="cue-animation-overlay">
-        <div id="animation-container" class="text-center space-y-4">
-            <div class="pool-table-canvas mx-auto">
-                <div class="pocket"></div>
-                <div id="animated-ball" class="cue-ball"></div>
-                <div id="animated-cue" class="cue-stick"></div>
-            </div>
-            <div class="space-y-1">
-                <h3 class="text-lg font-bold text-white">Booking Confirmed! 🎱</h3>
-                <p class="text-xs text-emerald-400">Your table has been successfully reserved.</p>
-            </div>
-        </div>
-
-        <!-- Receipt Preview Card (Hidden initially, shown after animation) -->
-        <div id="receipt-preview-card" class="hidden bg-gray-900 border border-felt-600 rounded-2xl p-6 max-w-sm w-full mx-4 text-left shadow-2xl relative">
-            <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-felt-600 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-0.5 rounded-full">
-                Official Receipt
-            </div>
-            <div class="text-center pb-4 border-b border-gray-800 mt-2">
-                <h2 class="text-base font-extrabold text-white">TEE'S 🎱 CUEFLIX</h2>
-                <p class="text-[11px] text-gray-400">Basil's Billiards Bookings</p>
-            </div>
-            <div class="py-4 space-y-2 text-xs text-gray-300">
-                <div class="flex justify-between"><span class="text-gray-500">Reference:</span> <span id="receipt-ref" class="font-mono text-felt-400 font-bold">--</span></div>
-                <div class="flex justify-between"><span class="text-gray-500">Name:</span> <span id="receipt-name" class="font-medium text-white">--</span></div>
-                <div class="flex justify-between"><span class="text-gray-500">Date:</span> <span id="receipt-date" class="font-medium text-white">--</span></div>
-                <div class="flex justify-between"><span class="text-gray-500">Time Slot:</span> <span id="receipt-slot" class="font-medium text-white">--</span></div>
-                <div class="flex justify-between"><span class="text-gray-500">Tables:</span> <span id="receipt-tables" class="font-medium text-white">--</span></div>
-                <div class="flex justify-between pt-2 border-t border-gray-800 font-bold text-sm">
-                    <span class="text-white">Total Paid:</span> <span id="receipt-total" class="text-felt-400">R0</span>
-                </div>
-            </div>
-            <div class="pt-2 text-center">
-                <p class="text-[10px] text-amber-400 mb-3">📸 Screenshot this receipt for entry verification at the counter.</p>
-                <button onclick="window.location.href='/'" class="w-full py-2.5 bg-felt-600 hover:bg-felt-500 rounded-xl text-white font-bold text-xs">
-                    Done / Book Another
-                </button>
-            </div>
+    <!-- ALERT / MESSAGE MODAL -->
+    <div id="alert-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-sm w-full text-center space-y-4">
+            <div id="alert-modal-icon" class="w-12 h-12 rounded-full mx-auto flex items-center justify-center"></div>
+            <h3 id="alert-modal-title" class="text-lg font-bold text-white">Notice</h3>
+            <p id="alert-modal-msg" class="text-sm text-gray-400"></p>
+            <button onclick="closeAlertModal()" class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-all text-sm">OK</button>
         </div>
     </div>
 
     <script>
-        let userId = localStorage.getItem('cuecraft_user_id') || 'usr_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('cuecraft_user_id', userId);
-
-        function getCurrentTimeHHMM() {
-            const now = new Date();
-            return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        }
-
-        let appState = {
-            tables: [],
-            selectedDate: new Date().toISOString().split('T')[0],
-            startTime: getCurrentTimeHHMM(),
-            durationHours: 1,
-            selectedTables: []
-        };
-
         const floorPlanCoordinates = {
             16: { col: 2, row: 3, isHorizontal: true },
             18: { col: 3, row: 3, isHorizontal: true, colSpan: 2 },
@@ -485,146 +452,321 @@
             { id: 23, name: 'Table 23', type: 'heyball' }
         ];
 
-        const allTableNumbers = [...Object.keys(floorPlanCoordinates).map(Number), ...heyballZoneTables.map(t => t.id)];
+        let appState = {
+            tables: [],
+            allDateBookings: [],
+            selectedDate: new Date().toISOString().split('T')[0],
+            pendingWalkInData: null,
+            selectedTables: []
+        };
 
-        window.addEventListener('DOMContentLoaded', async () => {
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-
-            const urlParams = new URLSearchParams(window.location.search);
-            const paymentStatus = urlParams.get('payment');
-            const refId = urlParams.get('refId');
-
-            if (paymentStatus === 'success') {
-                // Fetch booking details for receipt preview
-                try {
-                    const res = await fetch(`/api/bookings/lookup?refId=${refId}`);
-                    const data = await res.json();
-                    if (data && data.success) {
-                        showBookingSuccessAnimation(data.receiptData, () => {
-                            window.history.replaceState({}, document.title, window.location.pathname);
-                        });
-                    } else {
-                        showBookingSuccessAnimation({ ref_id: refId, user_name: 'Valued Customer', booking_date: appState.selectedDate, time_slot: getFormattedSlot(), table_display: 'See Counter', total_paid: '0' }, () => {
-                            window.history.replaceState({}, document.title, window.location.pathname);
-                        });
-                    }
-                } catch (e) {
-                    showBookingSuccessAnimation({ ref_id: refId, user_name: 'Valued Customer', booking_date: appState.selectedDate, time_slot: getFormattedSlot(), table_display: 'See Counter', total_paid: '0' }, () => {
-                        window.history.replaceState({}, document.title, window.location.pathname);
-                    });
-                }
-            } else if (paymentStatus === 'cancelled') {
-                alert('Payment was cancelled. You can try again when you are ready.');
-                window.history.replaceState({}, document.title, window.location.pathname);
-            } else if (paymentStatus === 'failed') {
-                alert('❌ Payment failed or could not be verified. Please try again.');
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
-
+        window.addEventListener('DOMContentLoaded', () => {
+            const now = new Date();
+            const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            
             document.getElementById('selected-date').value = appState.selectedDate;
-            document.getElementById('start-time').value = appState.startTime;
-            document.getElementById('duration-hours').value = appState.durationHours;
+            document.getElementById('selected-month').value = monthStr;            
+            document.getElementById('selected-date').addEventListener('change', onDateChange);
+            document.getElementById('action-items-form').addEventListener('submit', handleActionFormSubmit);
 
-            document.getElementById('selected-date').addEventListener('change', onFilterChange);
-            document.getElementById('start-time').addEventListener('change', onFilterChange);
-            document.getElementById('duration-hours').addEventListener('change', onFilterChange);
-            
-            document.getElementById('cancel-booking-btn').addEventListener('click', closeBookingModal);
-            document.getElementById('mobile-multi-book-btn').addEventListener('click', openMultiBookingModal);
-            document.getElementById('clear-selection-btn').addEventListener('click', clearSelection);
-            
-            updateSlotPreview();
-            updateSelectionUI();
-            loadData();
+            toggleActionFields();
+            loadAdminData();
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         });
 
-        function calculateEndTime(startTimeStr, hoursToAdd) {
-            if (!startTimeStr) return "";
-            const parts = startTimeStr.split(':');
-            const hours = parseInt(parts[0], 10) || 0;
-            const minutes = parseInt(parts[1], 10) || 0;
-            const totalMinutes = hours * 60 + minutes + (parseInt(hoursToAdd) * 60);
-            const endHours = Math.floor(totalMinutes / 60) % 24;
-            const endMinutes = totalMinutes % 60;
-            return `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bgColors = "bg-gray-900 border-gray-700 text-gray-200";
+            let iconName = "info";
+            
+            if (type === 'success') {
+                bgColors = "bg-emerald-950/90 border-emerald-500/50 text-emerald-200";
+                iconName = "check-circle";
+            } else if (type === 'error') {
+                bgColors = "bg-rose-950/90 border-rose-500/50 text-rose-200";
+                iconName = "alert-triangle";
+            } else if (type === 'warning') {
+                bgColors = "bg-amber-950/90 border-amber-500/50 text-amber-200";
+                iconName = "alert-circle";
+            }
+
+            toast.className = `flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-md shadow-xl text-sm font-semibold pointer-events-auto animate-toast ${bgColors}`;
+            toast.innerHTML = `<i data-lucide="${iconName}" class="w-5 h-5 flex-shrink-0"></i><span>${message}</span>`;
+            
+            container.appendChild(toast);
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
         }
 
-        function formatTime12H(time24) {
-            if (!time24) return "";
-            const parts = time24.split(':');
-            let hours = parseInt(parts[0], 10) || 0;
-            const minutes = parseInt(parts[1], 10) || 0;
-            const ampm = hours >= 12 ? 'pm' : 'am';
-            hours = hours % 12 || 12;
-            const minStr = String(minutes).padStart(2, '0');
-            return `${hours}:${minStr}${ampm}`;
+        function showAlertModal(message, title = 'Notice', type = 'warning') {
+            const modal = document.getElementById('alert-modal');
+            const titleEl = document.getElementById('alert-modal-title');
+            const msgEl = document.getElementById('alert-modal-msg');
+            const iconEl = document.getElementById('alert-modal-icon');
+
+            titleEl.innerText = title;
+            msgEl.innerText = message;
+
+            if (type === 'error') {
+                iconEl.className = "w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-rose-500/20 text-rose-400";
+                iconEl.innerHTML = `<i data-lucide="x-circle" class="w-6 h-6"></i>`;
+            } else {
+                iconEl.className = "w-12 h-12 rounded-full mx-auto flex items-center justify-center bg-amber-500/20 text-amber-400";
+                iconEl.innerHTML = `<i data-lucide="alert-triangle" class="w-6 h-6"></i>`;
+            }
+
+            modal.classList.remove('hidden');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        function getFormattedSlot() {
-            const endTime = calculateEndTime(appState.startTime, appState.durationHours);
-            return `${formatTime12H(appState.startTime)} - ${formatTime12H(endTime)}`;
+        function closeAlertModal() {
+            document.getElementById('alert-modal').classList.add('hidden');
         }
 
-        function updateSlotPreview() {
-            const durationText = `${appState.durationHours} hr${appState.durationHours > 1 ? 's' : ''}`;
-            document.getElementById('slot-preview').innerText = `${getFormattedSlot()} (${durationText})`;
-            document.getElementById('bottom-slot').innerText = getFormattedSlot();
+        function switchAdminTab(tab) {
+            ['matrix', 'day-bookings', 'actions', 'month'].forEach(t => {
+                const el = document.getElementById(`admin-tab-${t}`);
+                const btn = document.getElementById(`tab-btn-${t}`);
+                if (t === tab) {
+                    el.classList.remove('hidden');
+                    btn.className = "w-full text-left py-3 px-4 text-sm font-bold rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 transition-all whitespace-nowrap";
+                } else {
+                    el.classList.add('hidden');
+                    btn.className = "w-full text-left py-3 px-4 text-sm font-bold rounded-xl text-gray-400 hover:text-white hover:bg-gray-900 transition-all whitespace-nowrap";
+                }
+            });
+
+            if (tab === 'month') loadMonthData();
+            if (tab === 'actions') renderAdminFloorPlan();
         }
 
-        function updateAvailabilitySummary(customText) {
-            const el = document.getElementById('availability-summary');
-            if (customText) {
-                el.innerText = customText;
+        function getLoaderHTML(text = "Loading...") {
+            return `
+                <div class="absolute inset-0 bg-gray-900/70 backdrop-blur-xs flex items-center justify-center gap-3 z-30 rounded-2xl">
+                    <i data-lucide="loader-2" class="w-6 h-6 text-amber-400 animate-spin"></i>
+                    <span class="text-xs font-semibold text-gray-300">${text}</span>
+                </div>
+            `;
+        }
+
+        async function loadAdminData() {
+            const rowsContainer = document.getElementById('timeline-rows');
+            const bookingsContainer = document.getElementById('admin-bookings-list');
+
+            rowsContainer.innerHTML = getLoaderHTML("Loading schedule timeline...");
+            bookingsContainer.innerHTML = `<tr><td colspan="8" class="p-8 text-center relative">${getLoaderHTML("Loading bookings...")}</td></tr>`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+
+            try {
+                const tablesRes = await fetch('/api/tables');
+                const tablesData = await tablesRes.json();
+                appState.tables = Array.isArray(tablesData) ? tablesData : [];
+
+                const dayBookingsRes = await fetch(`/api/admin/day-bookings?date=${appState.selectedDate}`);
+                const responseData = await dayBookingsRes.json();
+
+                const dayBookings = responseData.bookings || [];
+                const summary = responseData.summary || { totalCash: 0, totalCard: 0 };
+
+                appState.allDateBookings = dayBookings;
+
+                document.getElementById('day-total-cash').innerText = `R${Number(summary.totalCash).toFixed(2)}`;
+                document.getElementById('day-total-card').innerText = `R${Number(summary.totalCard).toFixed(2)}`;
+
+                renderTimeline();
+                renderAdminBookings(appState.allDateBookings);
+                renderAdminFloorPlan();
+            } catch (err) {
+                console.error('Error loading admin data:', err);
+                showToast('Failed to load dashboard data.', 'error');
+            }
+        }
+
+        function toggleActionFields() {
+            const type = document.getElementById('action-type').value;
+            const timeFields = document.getElementById('time-range-fields');
+            const walkinFields = document.getElementById('walkin-hours-field');
+            const durationWrapper = document.getElementById('duration-field-wrapper');
+
+            if (type === 'WALK_IN') {
+                timeFields.classList.add('hidden');
+                walkinFields.classList.remove('hidden');
+            } else if (type === 'MAINTENANCE') {
+                timeFields.classList.add('hidden');
+                walkinFields.classList.add('hidden');
+            } else if (type === 'RESERVED') {
+                timeFields.classList.remove('hidden');
+                walkinFields.classList.add('hidden');
+                durationWrapper.classList.remove('hidden');
+            } else if (type === 'CLEAR_TABLE') {
+                timeFields.classList.remove('hidden');
+                walkinFields.classList.add('hidden');
+                durationWrapper.classList.add('hidden');
+            }
+        }
+
+        function calculateWalkInPrice(selectedTableIds, durationHours) {
+            let total = 0;
+            selectedTableIds.forEach(id => {
+                const table = appState.tables.find(t => String(t.id) === String(id));
+                const hourlyRate = (table && table.price) ? Number(table.price) : 60;
+                total += hourlyRate * Number(durationHours);
+            });
+            return total;
+        }
+
+        async function handleActionFormSubmit(e) {
+            e.preventDefault();
+            const actionType = document.getElementById('action-type').value;
+            const selectedTables = appState.selectedTables.map(t => t.id);
+
+            if (selectedTables.length === 0) {
+                showAlertModal('Please select at least one table from the floorplan to perform this action.', 'Selection Required', 'warning');
                 return;
             }
-            const available = appState.tables.length;
-            const total = allTableNumbers.length;
-            el.innerText = `${available} of ${total} tables available for ${getFormattedSlot()}`;
-        }
 
-        async function loadData() {
-            updateAvailabilitySummary('Checking availability…');
-            try {
-                const queryParams = new URLSearchParams({
+            const now = new Date();
+            const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+            let startTime = currentTimeStr;
+            let durationHours = 1;
+            let generatedSlot = "";
+
+            if (actionType === 'WALK_IN') {
+                durationHours = document.getElementById('walkin-duration').value || 1;
+                const endTime = calculateEndTime(startTime, durationHours);
+                generatedSlot = `${formatTime12H(startTime)} - ${formatTime12H(endTime)}`;
+
+                const calculatedPrice = calculateWalkInPrice(selectedTables, durationHours);
+                appState.pendingWalkInData = {
+                    actionType,
+                    price: calculatedPrice,
+                    tables: selectedTables,
+                    slots: [generatedSlot],
                     date: appState.selectedDate,
-                    startTime: appState.startTime,
-                    duration: appState.durationHours
-                });
-                const res = await fetch(`/api/tables/available?${queryParams.toString()}`);
-                const data = await res.json();
-                appState.tables = Array.isArray(data) ? data : [];
-            } catch (err) {
-                appState.tables = allTableNumbers.map(num => {
-                    const heyballItem = heyballZoneTables.find(t => t.id === num);
-                    return { 
-                        id: num, 
-                        name: heyballItem ? `Table ${heyballItem.name}` : `Table ${num}`, 
-                        price: 50 
-                    };
-                });
+                    durationHours,
+                    startTimeOverride: startTime
+                };
+                document.getElementById('modal-calculated-price').innerText = `R${calculatedPrice.toFixed(2)}`;
+                document.getElementById('payment-modal').classList.remove('hidden');
+                return;
+            } 
+            else if (actionType === 'MAINTENANCE') {
+                const closingHourMin = 23 * 60;
+                const currentMin = now.getHours() * 60 + now.getMinutes();
+                const remainingMin = Math.max(60, closingHourMin - currentMin);
+                
+                durationHours = (remainingMin / 60).toFixed(2);
+                generatedSlot = `${formatTime12H(startTime)} - 11:00 PM`;
+            } 
+            else if (actionType === 'RESERVED') {
+                startTime = document.getElementById('action-start-time').value;
+                durationHours = document.getElementById('action-duration').value;
+                const endTime = calculateEndTime(startTime, durationHours);
+                generatedSlot = `${formatTime12H(startTime)} - ${formatTime12H(endTime)}`;
+            } 
+            else if (actionType === 'CLEAR_TABLE') {
+                startTime = document.getElementById('action-start-time').value || currentTimeStr;
+                durationHours = 1;
+                const endTime = calculateEndTime(startTime, durationHours);
+                generatedSlot = `${formatTime12H(startTime)} - ${formatTime12H(endTime)}`;
             }
-            renderFloorPlan();
-            updateAvailabilitySummary();
+
+            await executeActionAPI({
+                actionType,
+                tables: selectedTables,
+                slots: [generatedSlot],
+                date: appState.selectedDate,
+                durationHours,
+                startTimeOverride: startTime
+            });
         }
 
-        function renderFloorPlan() {
-            renderMainFloor();
-            renderHeyballZone();
+        async function confirmWalkInWithPayment(paymentMethod) {
+            if (!appState.pendingWalkInData) return;
+            
+            const payCashBtn = document.getElementById('btn-pay-cash');
+            const payCardBtn = document.getElementById('btn-pay-card');
+            payCashBtn.disabled = true;
+            payCardBtn.disabled = true;
+
+            const payload = {
+                ...appState.pendingWalkInData,
+                paymentMethod
+            };
+            
+            closePaymentModal();
+            await executeActionAPI(payload);
+
+            payCashBtn.disabled = false;
+            payCardBtn.disabled = false;
         }
 
-        function renderMainFloor() {
-            const container = document.getElementById('table-node-container');
+        function closePaymentModal() {
+            document.getElementById('payment-modal').classList.add('hidden');
+            appState.pendingWalkInData = null;
+        }
+
+        async function executeActionAPI(payload) {
+            const submitBtn = document.getElementById('btn-submit-action');
+            const originalBtnHTML = submitBtn.innerHTML;
+            
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Processing...`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+
+            try {
+                const res = await fetch('/api/admin/action-item', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    showToast('Action item successfully applied!', 'success');
+                    document.getElementById('action-items-form').reset();
+                    toggleActionFields();
+                    appState.selectedTables = [];
+                    await loadAdminData();
+                    switchAdminTab('matrix');
+                } else {
+                    const data = await res.json();
+                    showAlertModal(data.error || 'Could not apply action item.', 'Action Failed', 'error');
+                }
+            } catch (err) {
+                console.error('Action submission error:', err);
+                showToast('Network error while processing action item.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnHTML;
+            }
+        }
+
+        /* Interactive Admin Floorplan Functions */
+        function renderAdminFloorPlan() {
+            renderAdminMainFloor();
+            renderAdminHeyballZone();
+            updateAdminSelectionUI();
+        }
+
+        function renderAdminMainFloor() {
+            const container = document.getElementById('admin-table-node-container');
+            if (!container) return;
             container.innerHTML = '';
 
             Object.keys(floorPlanCoordinates).forEach(tableNum => {
                 const num = parseInt(tableNum);
                 const pos = floorPlanCoordinates[num];
-                const tableData = appState.tables.find(t => t.id === num || t.number === num);
-                const isAvailable = Boolean(tableData);
-                const isSelected = appState.selectedTables.some(t => t.id === num);
-                const price = tableData ? (tableData.price || 50) : 50;
-                
+                const tableData = appState.tables.find(t => Number(t.id) === num || Number(t.number) === num);
+                const price = tableData ? (tableData.price || 60) : 60;
                 const tableName = tableData && tableData.name ? tableData.name : `Table ${num}`;
+                const isSelected = appState.selectedTables.some(t => Number(t.id) === num);
 
                 const isRasson = num === 17 || num === 18;
                 const feltClass = isRasson ? 'billiard-table-cloth-green' : 'billiard-table-cloth-blue';
@@ -638,256 +780,427 @@
                 const dimensionClass = pos.isHorizontal ? 'table-frame-horizontal' : 'table-frame-vertical';
 
                 const tableCard = document.createElement('div');
-                tableCard.className = `billiard-wood-frame p-1 rounded-xl transition-all ${dimensionClass} ${
-                    isAvailable ? 'active:scale-95 md:hover:scale-105 cursor-pointer opacity-100 shadow-lg' : 'opacity-40 pointer-events-none'
-                } ${isSelected ? 'ring-2 md:ring-4 ring-felt-500 scale-105 shadow-[0_0_20px_rgba(16,185,129,.28)]' : ''}`;
+                tableCard.className = `billiard-wood-frame p-1 rounded-xl transition-all ${dimensionClass} cursor-pointer active:scale-95 md:hover:scale-105 shadow-md ${
+                    isSelected ? 'ring-2 md:ring-4 ring-amber-400 scale-105 shadow-[0_0_20px_rgba(251,191,36,.3)]' : 'opacity-90'
+                }`;
 
                 tableCard.innerHTML = `
                     <div class="${feltClass} w-full h-full rounded-lg flex flex-col items-center justify-center text-white relative p-1 text-center">
-                        ${isAvailable ? `
-                            <span class="text-[11px] md:text-xs font-extrabold leading-tight tracking-wide break-words max-w-full px-0.5">${tableName}</span>
-                            <span class="text-[9px] md:text-[10px] text-emerald-200 mt-0.5 leading-none font-semibold">R${price}/hr</span>
-                            ${isSelected ? '<span class="text-[8px] md:text-[9px] bg-felt-500 text-black px-1 rounded-md absolute top-1 right-1 font-bold">✓</span>' : ''}
-                        ` : `
-                            <span class="text-xs md:text-sm font-bold text-red-400 uppercase tracking-wider">Booked</span>
-                        `}
+                        <span class="text-[11px] md:text-xs font-extrabold leading-tight tracking-wide break-words max-w-full px-0.5">${tableName}</span>
+                        <span class="text-[9px] md:text-[10px] text-amber-200 mt-0.5 leading-none font-semibold">R${price}/hr</span>
+                        ${isSelected ? '<span class="text-[8px] md:text-[9px] bg-amber-400 text-black px-1.5 rounded-md absolute top-1 right-1 font-bold">✓</span>' : ''}
                     </div>
                 `;
 
-                if (isAvailable) {
-                    tableCard.addEventListener('click', () => toggleTableSelection({ id: num, name: tableName, price }));
-                }
-
+                tableCard.addEventListener('click', () => toggleAdminTableSelection({ id: num, name: tableName, price }));
                 wrapper.appendChild(tableCard);
                 container.appendChild(wrapper);
             });
         }
 
-        function showBookingSuccessAnimation(bookingDetails, onComplete) {
-            const overlay = document.getElementById('cue-animation-overlay');
-            const animContainer = document.getElementById('animation-container');
-            const receiptCard = document.getElementById('receipt-preview-card');
-            const ball = document.getElementById('animated-ball');
-            const cue = document.getElementById('animated-cue');
-
-            animContainer.classList.remove('hidden');
-            receiptCard.classList.add('hidden');
-
-            ball.classList.remove('animate-ball');
-            cue.classList.remove('animate-cue');
-            void ball.offsetWidth;
-            void cue.offsetWidth;
-
-            overlay.classList.add('active');
-            ball.classList.add('animate-ball');
-            cue.classList.add('animate-cue');
-
-            setTimeout(() => {
-                animContainer.classList.add('hidden');
-                receiptCard.classList.remove('hidden');
-
-                if (bookingDetails) {
-                    document.getElementById('receipt-ref').innerText = bookingDetails.ref_id || 'YOC-XXXXXX';
-                    document.getElementById('receipt-name').innerText = bookingDetails.user_name || '--';
-                    document.getElementById('receipt-date').innerText = bookingDetails.booking_date || '--';
-                    document.getElementById('receipt-slot').innerText = bookingDetails.time_slot || '--';
-                    document.getElementById('receipt-tables').innerText = bookingDetails.table_display || '--';
-                    document.getElementById('receipt-total').innerText = `R${bookingDetails.total_paid || 0}`;
-                }
-                if (onComplete) onComplete();
-            }, 4500);
-        }
-
-        function renderHeyballZone() {
-            const container = document.getElementById('heyball-zone-container');
+        function renderAdminHeyballZone() {
+            const container = document.getElementById('admin-heyball-zone-container');
+            if (!container) return;
             container.innerHTML = '';
 
             heyballZoneTables.forEach(tDef => {
                 const num = tDef.id;
-                const tableData = appState.tables.find(t => t.id === num || t.number === num);
-                const isAvailable = Boolean(tableData);
-                const isSelected = appState.selectedTables.some(t => t.id === num);
-                const price = tableData ? (tableData.price || 50) : 50;
-                const tableName = `Table ${tDef.name}`;
-
+                const tableData = appState.tables.find(t => Number(t.id) === num || Number(t.number) === num);
+                const price = tableData ? (tableData.price || 60) : 60;
+                const isSelected = appState.selectedTables.some(t => Number(t.id) === num);
                 const feltClass = tDef.type === 'heyball' ? 'billiard-table-cloth-green' : 'billiard-table-cloth-blue';
 
                 const tableCard = document.createElement('div');
-                tableCard.className = `billiard-wood-frame p-1 rounded-xl transition-all table-frame-vertical ${
-                    isAvailable ? 'active:scale-95 md:hover:scale-105 cursor-pointer opacity-100 shadow-md' : 'opacity-40 pointer-events-none'
-                } ${isSelected ? 'ring-2 md:ring-4 ring-felt-500 scale-105 shadow-[0_0_20px_rgba(16,185,129,.28)]' : ''}`;
+                tableCard.className = `billiard-wood-frame p-1 rounded-xl transition-all table-frame-vertical cursor-pointer active:scale-95 md:hover:scale-105 shadow-md ${
+                    isSelected ? 'ring-2 md:ring-4 ring-amber-400 scale-105 shadow-[0_0_20px_rgba(251,191,36,.3)]' : 'opacity-90'
+                }`;
 
                 tableCard.innerHTML = `
                     <div class="${feltClass} w-full h-full rounded-lg flex flex-col items-center justify-center text-white relative p-1 text-center">
-                        ${isAvailable ? `
-                            <span class="text-[10px] md:text-xs font-extrabold leading-tight tracking-wide break-words max-w-full px-0.5">${tDef.name}</span>
-                            <span class="text-[8px] md:text-[10px] text-emerald-200 leading-none font-semibold mt-0.5">R${price}/hr</span>
-                            ${isSelected ? '<span class="text-[8px] md:text-[9px] bg-felt-500 text-black px-1 rounded-md absolute top-1 right-1 font-bold">✓</span>' : ''}
-                        ` : `
-                            <span class="text-xs md:text-sm font-bold text-red-400 uppercase tracking-wider">Booked</span>
-                        `}
+                        <span class="text-[10px] md:text-xs font-extrabold leading-tight tracking-wide break-words max-w-full px-0.5">${tDef.name}</span>
+                        <span class="text-[8px] md:text-[10px] text-amber-200 leading-none font-semibold mt-0.5">R${price}/hr</span>
+                        ${isSelected ? '<span class="text-[8px] md:text-[9px] bg-amber-400 text-black px-1.5 rounded-md absolute top-1 right-1 font-bold">✓</span>' : ''}
                     </div>
                 `;
 
-                if (isAvailable) {
-                    tableCard.addEventListener('click', () => toggleTableSelection({ id: num, name: tableName, price }));
-                }
-
+                tableCard.addEventListener('click', () => toggleAdminTableSelection({ id: num, name: tDef.name, price }));
                 container.appendChild(tableCard);
             });
         }
 
-        function toggleTableSelection(table) {
-            const index = appState.selectedTables.findIndex(t => t.id === table.id);
+        function toggleAdminTableSelection(table) {
+            const index = appState.selectedTables.findIndex(t => Number(t.id) === Number(table.id));
             if (index > -1) {
                 appState.selectedTables.splice(index, 1);
             } else {
                 appState.selectedTables.push(table);
             }
-            renderFloorPlan();
-            updateSelectionUI();
+            renderAdminFloorPlan();
         }
 
-        function clearSelection() {
+        function clearAdminSelection() {
             appState.selectedTables = [];
-            renderFloorPlan();
-            updateSelectionUI();
+            renderAdminFloorPlan();
         }
 
-        function updateSelectionUI() {
+        function updateAdminSelectionUI() {
             const count = appState.selectedTables.length;
-            const duration = Number(appState.durationHours);
-            const bookingFee = 15 * duration * count;
-            
-            let subtotal = 0;
-            appState.selectedTables.forEach(t => subtotal += (t.price || 50) * duration);
-            const total = subtotal + bookingFee;
+            const badge = document.getElementById('admin-selected-badge');
+            const clearBtn = document.getElementById('clear-admin-selection-btn');
 
-            document.getElementById('mobile-selected-count').innerText = `${count} table${count === 1 ? '' : 's'} selected`;
-            document.getElementById('bottom-price').innerText = count > 0 ? `Total: R${total} (incl. R15 * hour fee: R${bookingFee})` : 'Choose one or more available tables';
-            document.getElementById('mobile-multi-book-btn').disabled = count === 0;
-
-            const previewSec = document.getElementById('selection-preview');
-            const clearBtn = document.getElementById('clear-selection-btn');
-
-            if (count > 0) {
-                previewSec.classList.remove('hidden');
-                clearBtn.classList.remove('hidden');
-
-                document.getElementById('selection-title').innerText = `${count} Table${count === 1 ? '' : 's'} Selected`;
-                document.getElementById('selection-total').innerText = `R${total}`;
-
-                const chipsContainer = document.getElementById('selected-table-chips');
-                chipsContainer.innerHTML = appState.selectedTables.map(t => `
-                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-felt-950 border border-felt-800 text-xs text-felt-300 font-semibold">
-                        Table ${t.id} (R${(t.price || 50) * duration})
-                        <button onclick="toggleTableSelection({id: ${t.id}, price: ${t.price}})" class="text-gray-400 hover:text-white ml-1">×</button>
-                    </span>
-                `).join('');
-            } else {
-                previewSec.classList.add('hidden');
-                clearBtn.classList.add('hidden');
+            if (badge) {
+                badge.innerText = count === 0 ? '0 tables selected' : `${count} table(s) selected: ` + appState.selectedTables.map(t => `T${t.id}`).join(', ');
+            }
+            if (clearBtn) {
+                if (count > 0) clearBtn.classList.remove('hidden');
+                else clearBtn.classList.add('hidden');
             }
         }
 
-        function onFilterChange() {
-            appState.selectedDate = document.getElementById('selected-date').value;
-            appState.startTime = document.getElementById('start-time').value;
-            appState.durationHours = parseInt(document.getElementById('duration-hours').value, 10);
-
-            updateSlotPreview();
-            appState.selectedTables = [];
-            updateSelectionUI();
-            loadData();
+        function downloadMonthlyCSV() {
+            const month = document.getElementById('selected-month').value;
+            if (!month) {
+                showAlertModal('Please select a valid month to download.', 'Selection Required');
+                return;
+            }
+            showToast('Preparing CSV download...', 'info');
+            window.location.href = `/api/admin/export-month-csv?month=${month}`;
         }
 
-        function openMultiBookingModal() {
-            if (appState.selectedTables.length === 0) return;
+        async function loadMonthData() {
+            const selectedMonth = document.getElementById('selected-month').value;
+            if (!selectedMonth) return;
 
-            const tableNums = appState.selectedTables.map(t => t.id).sort((a,b) => a - b).join(', ');
-            const duration = Number(appState.durationHours);
-            const count = appState.selectedTables.length;
-            const bookingFee = 15 * duration * count;
+            const grid = document.getElementById('month-calendar-grid');
+            grid.innerHTML = getLoaderHTML("Loading monthly summary...");
+            if (typeof lucide !== 'undefined') lucide.createIcons();
 
-            let subtotal = 0;
-            appState.selectedTables.forEach(t => subtotal += (t.price || 50) * duration);
-            const total = subtotal + bookingFee;
+            try {
+                const res = await fetch(`/api/admin/month-summary?month=${selectedMonth}`);
+                const monthData = await res.json();
 
-            document.getElementById('modal-table-num').innerText = tableNums;
-            document.getElementById('modal-date').innerText = appState.selectedDate;
-            document.getElementById('modal-time-slot').innerText = getFormattedSlot();
-            document.getElementById('modal-duration').innerText = `${duration} hour(s)`;
-            document.getElementById('modal-tables-count').innerText = `${count} table(s)`;
-            document.getElementById('modal-subtotal').innerText = `R${subtotal}`;
-            document.getElementById('modal-booking-fee').innerText = `+R${bookingFee}`;
-            document.getElementById('modal-total-price').innerText = `R${total}`;
+                document.getElementById('month-total-rev').innerText = `R${Number(monthData.totalRevenue || 0).toFixed(2)}`;
+                document.getElementById('month-total-cash').innerText = `R${Number(monthData.totalCash || 0).toFixed(2)}`;
+                document.getElementById('month-total-card').innerText = `R${Number(monthData.totalCard || 0).toFixed(2)}`;
 
-            document.getElementById('booking-modal').classList.remove('hidden');
+                renderMonthGrid(selectedMonth, monthData.days || {});
+            } catch (err) {
+                console.error('Error loading month overview:', err);
+                showToast('Failed to load monthly overview data.', 'error');
+            }
         }
 
-        function closeBookingModal() {
-            document.getElementById('booking-modal').classList.add('hidden');
+        function renderMonthGrid(yearMonth, dailyData) {
+            const grid = document.getElementById('month-calendar-grid');
+            grid.innerHTML = '';
+
+            const [year, month] = yearMonth.split('-').map(Number);
+            const daysInMonth = new Date(year, month, 0).getDate();
+            const firstDayIndex = new Date(year, month - 1, 1).getDay();
+
+            const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            weekdays.forEach(day => {
+                grid.innerHTML += `<div class="font-bold text-gray-500 py-2">${day}</div>`;
+            });
+
+            for (let i = 0; i < firstDayIndex; i++) {
+                grid.innerHTML += `<div class="bg-gray-950/20 rounded-xl h-24 border border-gray-900/50"></div>`;
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateKey = `${yearMonth}-${String(day).padStart(2, '0')}`;
+                const data = dailyData[dateKey] || { total: 0, cash: 0, card: 0, count: 0 };
+
+                grid.innerHTML += `
+                    <div class="bg-gray-950 border border-gray-800 rounded-xl p-2 h-24 flex flex-col justify-between text-left hover:border-gray-700 transition-all">
+                        <span class="font-bold text-white text-xs">${day}</span>
+                        <div>
+                            <p class="text-[10px] font-bold text-felt-400">R${Number(data.total).toFixed(2)}</p>
+                            <div class="text-[9px] text-gray-400 mt-0.5 space-y-0.5">
+                                <p class="text-amber-400">Cash: R${Number(data.cash).toFixed(2)}</p>
+                                <p class="text-blue-400">Card: R${Number(data.card).toFixed(2)}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
         }
 
-        async function handleYocoPayment() {
-            const nameInput = document.getElementById('form-user-name');
-            const phoneInput = document.getElementById('form-user-phone');
+        function parseTimeToMinutes(timeStr) {
+            if (!timeStr) return 0;
+            const cleanStr = timeStr.trim();
+            if (cleanStr.includes('AM') || cleanStr.includes('PM')) {
+                const parts = cleanStr.split(' ');
+                const timeParts = parts[0].split(':');
+                let hours = Number(timeParts[0]) % 12;
+                if (parts[1] === 'PM') hours += 12;
+                return hours * 60 + (Number(timeParts[1]) || 0);
+            }
+            const [h, m] = cleanStr.split(':').map(Number);
+            return (h || 0) * 60 + (m || 0);
+        }
 
-            if (!nameInput.checkValidity() || !phoneInput.checkValidity()) {
-                nameInput.reportValidity();
-                phoneInput.reportValidity();
+        function getBookingTimeRange(booking) {
+            if (booking.start_time && booking.duration_hours) {
+                const start = parseTimeToMinutes(booking.start_time);
+                return { startMin: start, durationMin: parseFloat(booking.duration_hours) * 60 };
+            }
+            const slot = booking.time_slot || booking.slot;
+            if (slot && slot.includes('-')) {
+                const [startStr, endStr] = slot.split('-').map(s => s.trim());
+                const startMin = parseTimeToMinutes(startStr);
+                let endMin = parseTimeToMinutes(endStr);
+                if (endMin <= startMin) endMin += 1440;
+                return { startMin, durationMin: endMin - startMin };
+            }
+            return { startMin: 660, durationMin: 60 };
+        }
+
+        function renderTimeline() {
+            document.getElementById('matrix-date-label').innerText = `Date: ${appState.selectedDate}`;
+            const headerContainer = document.getElementById('timeline-header');
+            const rowsContainer = document.getElementById('timeline-rows');
+
+            headerContainer.innerHTML = '';
+            rowsContainer.innerHTML = '';
+
+            const startHour = 11;
+            const totalHours = 12;
+            const dayStartMin = startHour * 60;
+            const dayTotalMin = totalHours * 60;
+
+            const tableHeaderSpacer = document.createElement('div');
+            tableHeaderSpacer.className = 'w-32 flex-shrink-0 font-bold text-xs text-gray-400 flex items-center justify-center border-r border-gray-800 bg-gray-950 p-2 sticky left-0 z-20';
+            tableHeaderSpacer.innerText = 'Table';
+            headerContainer.appendChild(tableHeaderSpacer);
+
+            const timelineHeaderTrack = document.createElement('div');
+            timelineHeaderTrack.className = 'flex-1 flex relative h-8';
+
+            for (let h = 0; h < totalHours; h++) {
+                const hour = (startHour + h) % 24;
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                const displayH = hour % 12 || 12;
+
+                const colHeader = document.createElement('div');
+                colHeader.className = 'flex-1 font-bold text-xs text-gray-400 text-center flex items-center justify-center border-r border-gray-800/40 bg-gray-950';
+                colHeader.innerText = `${displayH}:00 ${ampm}`;
+                timelineHeaderTrack.appendChild(colHeader);
+            }
+            headerContainer.appendChild(timelineHeaderTrack);
+
+            if (appState.tables.length === 0) {
+                rowsContainer.innerHTML = `<div class="p-8 text-center text-gray-500 text-sm">No pool tables available.</div>`;
                 return;
             }
 
-            const payBtn = document.getElementById('pay-yoco-btn');
-            const originalText = payBtn.innerHTML;
-            payBtn.disabled = true;
-            payBtn.innerHTML = `<span>Redirecting...</span>`;
+            appState.tables.forEach(table => {
+                const row = document.createElement('div');
+                row.className = 'flex items-stretch h-14 border border-gray-800/60 rounded-xl overflow-hidden bg-gray-950/40 relative';
+
+                const tableLabel = document.createElement('div');
+                tableLabel.className = 'w-32 flex-shrink-0 font-bold text-sm text-white border-r border-gray-800 flex items-center justify-center bg-gray-950 sticky left-0 z-10 px-2 truncate';
+                tableLabel.innerText = table.name || `Table ${table.id}`;
+                row.appendChild(tableLabel);
+
+                const track = document.createElement('div');
+                track.className = 'flex-1 relative bg-gray-950/20';
+
+                for (let h = 1; h < totalHours; h++) {
+                    const gridLine = document.createElement('div');
+                    gridLine.className = 'absolute top-0 bottom-0 border-r border-gray-800/30 pointer-events-none';
+                    gridLine.style.left = `${(h / totalHours) * 100}%`;
+                    track.appendChild(gridLine);
+                }
+
+                const tableBookings = appState.allDateBookings.filter(b => Number(b.table_id) === Number(table.id) && b.is_active === true);
+
+                tableBookings.forEach(b => {
+                    const { startMin, durationMin } = getBookingTimeRange(b);
+                    const offsetMin = Math.max(0, startMin - dayStartMin);
+                    const leftPercent = (offsetMin / dayTotalMin) * 100;
+                    const widthPercent = (durationMin / dayTotalMin) * 100;
+
+                    if (leftPercent < 100 && (leftPercent + widthPercent) > 0) {
+                        let bgClass = "bg-rose-500/20 border-rose-500 text-rose-300";
+                        if (b.status === 'WALK_IN') bgClass = "bg-blue-500/20 border-blue-500 text-blue-300";
+                        if (b.status === 'MAINTENANCE') bgClass = "bg-gray-700/40 border-gray-500 text-gray-300";
+
+                        const block = document.createElement('div');
+                        block.className = `absolute top-1 bottom-1 rounded-lg border px-2 py-1 flex flex-col justify-center text-[10px] leading-tight shadow-md overflow-hidden transition-all hover:scale-[1.01] hover:z-20 cursor-pointer ${bgClass}`;
+                        block.style.left = `${Math.max(0, leftPercent)}%`;
+                        block.style.width = `${Math.min(100 - leftPercent, widthPercent)}%`;
+
+                        const slotLabel = b.time_slot || b.slot || '';
+                        block.title = `${b.user_name || 'Booking'} (${slotLabel})`;
+
+                        block.innerHTML = `
+                            <span class="font-bold truncate">${b.user_name || 'Booking'}</span>
+                            <span class="text-[9px] opacity-80 truncate">${slotLabel}</span>
+                        `;
+                        track.appendChild(block);
+                    }
+                });
+
+                row.appendChild(track);
+                rowsContainer.appendChild(row);
+            });
+        }
+
+        function renderAdminBookings(bookings) {
+            const container = document.getElementById('admin-bookings-list');
+            container.innerHTML = '';
+
+            if (!bookings || bookings.length === 0) {
+                container.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-gray-500">No bookings found for this date.</td></tr>`;
+                return;
+            }
+
+            bookings.forEach(b => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-950/50 transition-colors";
+
+                let methodBadge = '';
+                if (b.payment_method === 'CASH') {
+                    methodBadge = `<span class="px-2 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-md font-bold">CASH</span>`;
+                } else if (b.payment_method === 'CARD') {
+                    methodBadge = `<span class="px-2 py-0.5 text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-md font-bold">CARD</span>`;
+                } else if (b.payment_method === 'ONLINE') {
+                    methodBadge = `<span class="px-2 py-0.5 text-[10px] bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-md font-bold">ONLINE BOOKING</span>`;
+                } else {
+                    methodBadge = `
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="updatePaymentMethod('${b.id}', 'CASH')" class="px-2 py-1 text-[10px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg transition-all">Cash</button>
+                            <button onclick="updatePaymentMethod('${b.id}', 'CARD')" class="px-2 py-1 text-[10px] font-bold bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg transition-all">Card</button>
+                        </div>
+                    `;
+                }
+
+                tr.innerHTML = `
+                    <td class="p-3 font-mono text-xs text-amber-400">${b.ref_id || 'N/A'}</td>
+                    <td class="p-3 font-semibold text-white">${b.user_name || 'N/A'}</td>
+                    <td class="p-3 text-xs text-gray-300">${b.phone || 'N/A'}</td>
+                    <td class="p-3 text-xs text-gray-300">${b.time_slot || b.slot || ''}</td>
+                    <td class="p-3">Table ${b.table_id}</td>
+                    <td class="p-3">${methodBadge}</td>
+                    <td class="p-3 font-semibold text-felt-400">R${Number(b.total_price || 0).toFixed(2)}</td>
+                    <td class="p-3">
+                        <button onclick="openEditModal('${b.id}')" class="px-3 py-1 bg-gray-800 hover:bg-amber-500 hover:text-black text-amber-400 font-bold text-xs rounded-lg transition-all flex items-center gap-1">
+                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Edit
+                        </button>
+                    </td>
+                `;
+                container.appendChild(tr);
+            });
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function openEditModal(bookingId) {
+            const booking = appState.allDateBookings.find(b => String(b.id) === String(bookingId));
+            if (!booking) return;
+
+            const tableSelect = document.getElementById('edit-table-id');
+            tableSelect.innerHTML = appState.tables.map(t => 
+                `<option value="${t.id}" ${Number(t.id) === Number(booking.table_id) ? 'selected' : ''}>Table ${t.id}</option>`
+            ).join('');
+
+            document.getElementById('edit-booking-id').value = booking.id;
+            document.getElementById('edit-user-name').value = booking.user_name || '';
+            document.getElementById('edit-phone').value = booking.phone || '';
+            document.getElementById('edit-booking-date').value = booking.booking_date || appState.selectedDate;
+            document.getElementById('edit-time-slot').value = booking.time_slot || '';
+            document.getElementById('edit-total-price').value = booking.total_price || 0;
+            document.getElementById('edit-payment-method').value = booking.payment_method || '';
+            document.getElementById('edit-status').value = booking.status || 'CONFIRMED';
+
+            document.getElementById('edit-booking-modal').classList.remove('hidden');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-booking-modal').classList.add('hidden');
+        }
+
+        async function handleEditBookingSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-booking-id').value;
+            const saveBtn = document.getElementById('btn-save-edit');
+            saveBtn.disabled = true;
 
             const payload = {
-                tableIds: appState.selectedTables.map(t => t.id),
-                date: appState.selectedDate,
-                startTime: appState.startTime,
-                durationHours: appState.durationHours,
-                slot: getFormattedSlot(),
-                userName: nameInput.value,
-                userIdentifier: 'GUEST_USER',
-                phone: phoneInput.value,
-                userId: userId,
-                bookingFeePerHour: 15
+                user_name: document.getElementById('edit-user-name').value,
+                phone: document.getElementById('edit-phone').value,
+                table_id: document.getElementById('edit-table-id').value,
+                booking_date: document.getElementById('edit-booking-date').value,
+                time_slot: document.getElementById('edit-time-slot').value,
+                total_price: document.getElementById('edit-total-price').value,
+                payment_method: document.getElementById('edit-payment-method').value || null,
+                status: document.getElementById('edit-status').value
             };
 
             try {
-                const res = await fetch('/api/payments/yoco/create-checkout', {
-                    method: 'POST',
+                const res = await fetch(`/api/admin/bookings/${id}`, {
+                    method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
-                if (!res.ok) {
-                    const errorText = await res.text();
-                    console.error(`Server error (HTTP ${res.status}):`, errorText);
-                    alert(`Server returned error ${res.status}. Please verify server routes.`);
-                    payBtn.disabled = false;
-                    payBtn.innerHTML = originalText;
-                    return;
-                }
-
-                const data = await res.json();
-
-                if (data.redirectUrl) {
-                    window.location.href = data.redirectUrl;
+                if (res.ok) {
+                    showToast('Booking updated successfully!', 'success');
+                    closeEditModal();
+                    await loadAdminData();
                 } else {
-                    alert(data.error || 'Failed to initialize YOCO payment session.');
-                    payBtn.disabled = false;
-                    payBtn.innerHTML = originalText;
+                    const data = await res.json();
+                    showAlertModal(data.error || 'Failed to update booking.', 'Update Failed', 'error');
                 }
             } catch (err) {
-                console.error('Error creating Yoco checkout session:', err);
-                alert('Connection error while initializing payment.');
-                payBtn.disabled = false;
-                payBtn.innerHTML = originalText;
+                console.error('Error updating booking:', err);
+                showToast('Network error while updating booking.', 'error');
+            } finally {
+                saveBtn.disabled = false;
             }
+        }
+
+        async function updatePaymentMethod(bookingId, paymentMethod) {
+            try {
+                const res = await fetch(`/api/admin/bookings/${bookingId}/payment`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payment_method: paymentMethod })
+                });
+
+                if (res.ok) {
+                    showToast(`Marked payment as ${paymentMethod}`, 'success');
+                    await loadAdminData();
+                } else {
+                    const data = await res.json();
+                    showAlertModal(data.error || 'Failed to update payment method.', 'Error', 'error');
+                }
+            } catch (err) {
+                console.error('Payment update error:', err);
+                showToast('Network error while updating payment method.', 'error');
+            }
+        }
+
+        function calculateEndTime(startTimeStr, hoursToAdd) {
+            if (!startTimeStr) return "";
+            const [hours, minutes] = startTimeStr.split(':').map(Number);
+            const endHours = (hours + parseInt(hoursToAdd)) % 24;
+            return `${String(endHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        }
+
+        function formatTime12H(time24) {
+            if (!time24) return "";
+            let [hours, minutes] = time24.split(':').map(Number);
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${ampm}`;
+        }
+
+        function onDateChange() {
+            appState.selectedDate = document.getElementById('selected-date').value;
+            loadAdminData();
         }
     </script>
 </body>
