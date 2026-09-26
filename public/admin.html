@@ -26,6 +26,49 @@
             to { transform: translateY(0); opacity: 1; }
         }
         .animate-toast { animation: toastIn 0.25s ease-out forwards; }
+
+        /* Table Felt Themes & Floorplan styles */
+        .billiard-table-cloth-blue { background: radial-gradient(circle, #5982db 0%, #1d4ed8 70%, #006796 100%); }
+        .billiard-table-cloth-green { background: radial-gradient(circle, #059669 0%, #047857 70%, #064e3b 100%); }
+        .billiard-wood-frame { background: linear-gradient(145deg, #5c2d12, #2a1205); }
+
+        .floorplan-grid {
+            display: grid;
+            grid-template-columns: 210px repeat(4, 1fr) 110px;
+            grid-template-rows: 40px 40px repeat(6, 120px) 40px;
+            gap: 0.6rem;
+        }
+
+        @media (min-width: 768px) {
+            .floorplan-grid {
+                grid-template-columns: 260px repeat(4, 1fr) 130px;
+                grid-template-rows: 45px 50px repeat(6, 135px) 50px;
+                gap: 0.85rem;
+            }
+        }
+
+        .table-slot-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .table-frame-horizontal { width: 125px; height: 68px; }
+        .table-frame-vertical { width: 68px; height: 120px; }
+
+        @media (min-width: 768px) {
+            .table-frame-horizontal { width: 145px; height: 78px; }
+            .table-frame-vertical { width: 78px; height: 135px; }
+        }
+
+        .zone-heyball { background: rgba(55, 65, 81, 0.25); border: 1px dashed #6b7280; }
+        .zone-restroom { background: rgba(14, 165, 233, 0.15); border: 1px solid #0284c7; }
+        .zone-stage { background: rgba(234, 179, 8, 0.15); border: 1px solid #eab308; }
+        .zone-counter { background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; }
+        .zone-door { background: rgba(245, 158, 11, 0.2); border: 1px dashed #f59e0b; }
+        .type-key-box { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col md:flex-row relative">
@@ -123,17 +166,76 @@
                 </div>
             </div>
 
-            <!-- TAB 3: Actions Form -->
-            <div id="admin-tab-actions" class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hidden">
-                <h3 class="text-lg font-bold text-amber-400 mb-4">Admin Action Management</h3>
-                <form id="action-items-form" class="space-y-4 max-w-2xl relative">
+            <!-- TAB 3: Capture Tables / Actions Form -->
+            <div id="admin-tab-actions" class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hidden space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div>
+                        <h3 class="text-lg font-bold text-amber-400">Admin Action Management</h3>
+                        <p class="text-xs text-gray-400 mt-0.5">Select tables from the interactive floorplan below and choose your admin action.</p>
+                    </div>
+                    <button type="button" id="clear-admin-selection-btn" onclick="clearAdminSelection()" class="text-xs text-gray-300 hover:text-white px-3 py-1.5 bg-gray-950 border border-gray-700 rounded-xl hidden transition-all">Clear selection</button>
+                </div>
+
+                <!-- Interactive Floorplan Selection Area -->
+                <div class="bg-gray-950/90 rounded-2xl border border-gray-800 p-4 overflow-x-auto">
+                    <div class="floorplan-grid min-w-[780px] md:min-w-[960px] mx-auto py-2">
+                        
+                        <div class="col-span-4 col-start-2 row-start-1 bg-gray-900/90 border border-gray-800 rounded-xl px-4 py-1.5 flex items-center justify-between text-xs text-gray-300">
+                            <span class="text-gray-400 font-semibold text-[10px] md:text-[11px] uppercase tracking-wider">Main Arena Table Types:</span>
+                            <div class="flex items-center gap-4">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="type-key-box bg-blue-600 border border-blue-400"></span>
+                                    <span class="text-[10px] md:text-xs font-medium">Blue: Blackball Tables</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="type-key-box bg-emerald-600 border border-emerald-400"></span>
+                                    <span class="text-[10px] md:text-xs font-medium">Green: Rasson Tables</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="zone-restroom rounded-xl text-sky-400 font-semibold text-[10px] md:text-xs flex items-center justify-center col-start-2 row-start-2">Mens</div>
+                        <div class="zone-stage rounded-xl text-amber-400 font-bold text-xs md:text-sm flex items-center justify-center col-span-2 col-start-3 row-start-2">STAGE</div>
+                        <div class="zone-restroom rounded-xl text-sky-400 font-semibold text-[10px] md:text-xs flex items-center justify-center col-start-5 row-start-2">Ladies</div>
+                        
+                        <div class="zone-heyball rounded-2xl p-2 md:p-3 text-gray-300 font-bold text-[10px] md:text-xs flex flex-col justify-between items-center text-center col-start-1 row-start-2 row-span-7 overflow-y-auto">
+                            <div class="w-full border-b border-gray-600/30 pb-2 mb-2 shrink-0">
+                                <span class="text-xs md:text-sm block text-gray-200">Heyball & 9-Ball Zone</span>
+                            </div>
+                            <div id="admin-heyball-zone-container" class="grid grid-cols-2 gap-2 md:gap-3 w-full my-auto justify-items-center"></div>
+                            
+                            <div class="w-full mt-3 pt-2 border-t border-gray-600/30 shrink-0">
+                                <div class="zone-door rounded-xl p-1.5 text-amber-300 font-bold text-[10px] md:text-xs flex items-center justify-center gap-1 w-full uppercase tracking-wider">
+                                    <i data-lucide="door-open" class="w-3.5 h-3.5"></i> Entrance
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="admin-table-node-container" class="contents"></div>
+                        <div class="zone-door rounded-xl p-1.5 text-amber-300 font-bold text-[8px] md:text-xs flex items-center justify-center gap-1 text-center col-start-6 row-start-6 row-span-2 uppercase tracking-wider">
+                            <i data-lucide="door-open" class="w-3.5 h-3.5"></i> Exit
+                        </div>
+                        <div class="zone-door rounded-xl p-1.5 text-amber-300 font-bold text-[8px] md:text-xs flex items-center justify-center gap-1 text-center col-start-3 row-start-9 uppercase tracking-wider">
+                            <i data-lucide="door-open" class="w-3.5 h-3.5"></i> Exit
+                        </div>
+                        <div class="zone-counter rounded-xl text-amber-400 font-bold text-[10px] md:text-xs flex items-center justify-center col-span-2 col-start-4 row-start-9">Counter</div>
+                    </div>
+                </div>
+
+                <!-- Action Form Controls -->
+                <form id="action-items-form" class="space-y-4 max-w-2xl mx-auto bg-gray-950 border border-gray-800 p-5 rounded-2xl relative">
+                    <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+                        <span class="text-xs font-bold text-amber-400 uppercase">Selected Tables for Action:</span>
+                        <span id="admin-selected-badge" class="text-xs font-bold text-white bg-gray-900 border border-gray-700 px-3 py-1 rounded-xl">0 tables selected</span>
+                    </div>
+
                     <div>
                         <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Action Type</label>
-                        <select id="action-type" onchange="toggleActionFields()" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
+                        <select id="action-type" onchange="toggleActionFields()" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
                             <option value="WALK_IN">Walk In (Starts Now)</option>
                             <option value="MAINTENANCE">Log Maintenance (Until 11 PM)</option>
                             <option value="RESERVED">Reserve Tables for League</option>
-                            <option value="CLEAR_TABLE">Clear Booking </option>
+                            <option value="CLEAR_TABLE">Clear Booking</option>
                         </select>
                     </div>
 
@@ -141,22 +243,17 @@
                     <div id="time-range-fields" class="grid grid-cols-2 gap-4 hidden">
                         <div>
                             <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Start Time</label>
-                            <input type="time" id="action-start-time" value="11:00" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
+                            <input type="time" id="action-start-time" value="11:00" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
                         </div>
                         <div id="duration-field-wrapper">
                             <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Duration (Hours)</label>
-                            <input type="number" id="action-duration" min="1" max="12" value="2" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
+                            <input type="number" id="action-duration" min="1" max="12" value="2" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
                         </div>
                     </div>
 
                     <div id="walkin-hours-field" class="block">
                         <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Walk-In Duration (Hours)</label>
-                        <input type="number" id="walkin-duration" min="1" max="12" value="1" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Select Tables</label>
-                        <div id="action-tables-container" class="grid grid-cols-3 md:grid-cols-6 gap-2 bg-gray-950 border border-gray-700 rounded-xl p-3 relative min-h-[60px]"></div>
+                        <input type="number" id="walkin-duration" min="1" max="12" value="1" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
                     </div>
 
                     <button type="submit" id="btn-submit-action" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-all flex items-center justify-center gap-2">
@@ -317,11 +414,50 @@
     </div>
 
     <script>
+        const floorPlanCoordinates = {
+            16: { col: 2, row: 3, isHorizontal: true },
+            18: { col: 3, row: 3, isHorizontal: true, colSpan: 2 },
+            14: { col: 5, row: 3, isHorizontal: true },
+            15: { col: 2, row: 4, isHorizontal: true },
+            17: { col: 3, row: 4, isHorizontal: true, colSpan: 2 },
+            13: { col: 5, row: 4, isHorizontal: true },
+            9:  { col: 2, row: 5, isHorizontal: false },
+            10: { col: 3, row: 5, isHorizontal: false },
+            11: { col: 4, row: 5, isHorizontal: false },
+            12: { col: 5, row: 5, isHorizontal: false },
+            8:  { col: 2, row: 6, isHorizontal: false },
+            7:  { col: 3, row: 6, isHorizontal: false },
+            6:  { col: 4, row: 6, isHorizontal: false },
+            5:  { col: 5, row: 6, isHorizontal: false },
+            1:  { col: 2, row: 7, isHorizontal: false },
+            2:  { col: 3, row: 7, isHorizontal: false },
+            3:  { col: 4, row: 7, isHorizontal: false },
+            4:  { col: 5, row: 7, isHorizontal: false },
+            19: { col: 2, row: 8, isHorizontal: false },
+            20: { col: 3, row: 8, isHorizontal: false },
+            21: { col: 4, row: 8, isHorizontal: false },
+            22: { col: 5, row: 8, isHorizontal: false }
+        };
+
+        const heyballZoneTables = [
+            { id: 32, name: 'Table 32', type: '9ball' },
+            { id: 31, name: 'Table 31', type: '9ball' },
+            { id: 30, name: 'Table 30', type: '9ball' },
+            { id: 29, name: 'Table 29', type: '9ball' },
+            { id: 28, name: 'Table 28', type: 'heyball' },
+            { id: 27, name: 'Table 27', type: 'heyball' },
+            { id: 26, name: 'Table 26', type: 'heyball' },
+            { id: 25, name: 'Table 25', type: 'heyball' },
+            { id: 24, name: 'Table 24', type: 'heyball' },
+            { id: 23, name: 'Table 23', type: 'heyball' }
+        ];
+
         let appState = {
             tables: [],
             allDateBookings: [],
             selectedDate: new Date().toISOString().split('T')[0],
-            pendingWalkInData: null
+            pendingWalkInData: null,
+            selectedTables: []
         };
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -407,6 +543,7 @@
             });
 
             if (tab === 'month') loadMonthData();
+            if (tab === 'actions') renderAdminFloorPlan();
         }
 
         function getLoaderHTML(text = "Loading...") {
@@ -421,11 +558,9 @@
         async function loadAdminData() {
             const rowsContainer = document.getElementById('timeline-rows');
             const bookingsContainer = document.getElementById('admin-bookings-list');
-            const tablesContainer = document.getElementById('action-tables-container');
 
             rowsContainer.innerHTML = getLoaderHTML("Loading schedule timeline...");
             bookingsContainer.innerHTML = `<tr><td colspan="8" class="p-8 text-center relative">${getLoaderHTML("Loading bookings...")}</td></tr>`;
-            tablesContainer.innerHTML = getLoaderHTML("Fetching tables...");
             if (typeof lucide !== 'undefined') lucide.createIcons();
 
             try {
@@ -444,9 +579,9 @@
                 document.getElementById('day-total-cash').innerText = `R${Number(summary.totalCash).toFixed(2)}`;
                 document.getElementById('day-total-card').innerText = `R${Number(summary.totalCard).toFixed(2)}`;
 
-                populateActionFormControls();
                 renderTimeline();
                 renderAdminBookings(appState.allDateBookings);
+                renderAdminFloorPlan();
             } catch (err) {
                 console.error('Error loading admin data:', err);
                 showToast('Failed to load dashboard data.', 'error');
@@ -489,10 +624,10 @@
         async function handleActionFormSubmit(e) {
             e.preventDefault();
             const actionType = document.getElementById('action-type').value;
-            const selectedTables = Array.from(document.querySelectorAll('input[name="action-tables"]:checked')).map(el => el.value);
+            const selectedTables = appState.selectedTables.map(t => t.id);
 
             if (selectedTables.length === 0) {
-                showAlertModal('Please select at least one table to perform this action.', 'Selection Required', 'warning');
+                showAlertModal('Please select at least one table from the floorplan to perform this action.', 'Selection Required', 'warning');
                 return;
             }
 
@@ -504,7 +639,7 @@
             let generatedSlot = "";
 
             if (actionType === 'WALK_IN') {
-                durationHours = document.getElementById('walkin-duration').value || 2;
+                durationHours = document.getElementById('walkin-duration').value || 1;
                 const endTime = calculateEndTime(startTime, durationHours);
                 generatedSlot = `${formatTime12H(startTime)} - ${formatTime12H(endTime)}`;
 
@@ -597,6 +732,7 @@
                     showToast('Action item successfully applied!', 'success');
                     document.getElementById('action-items-form').reset();
                     toggleActionFields();
+                    appState.selectedTables = [];
                     await loadAdminData();
                     switchAdminTab('matrix');
                 } else {
@@ -609,6 +745,115 @@
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalBtnHTML;
+            }
+        }
+
+        /* Interactive Admin Floorplan Functions */
+        function renderAdminFloorPlan() {
+            renderAdminMainFloor();
+            renderAdminHeyballZone();
+            updateAdminSelectionUI();
+        }
+
+        function renderAdminMainFloor() {
+            const container = document.getElementById('admin-table-node-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            Object.keys(floorPlanCoordinates).forEach(tableNum => {
+                const num = parseInt(tableNum);
+                const pos = floorPlanCoordinates[num];
+                const tableData = appState.tables.find(t => Number(t.id) === num || Number(t.number) === num);
+                const price = tableData ? (tableData.price || 60) : 60;
+                const tableName = tableData && tableData.name ? tableData.name : `Table ${num}`;
+                const isSelected = appState.selectedTables.some(t => Number(t.id) === num);
+
+                const isRasson = num === 17 || num === 18;
+                const feltClass = isRasson ? 'billiard-table-cloth-green' : 'billiard-table-cloth-blue';
+
+                const wrapper = document.createElement('div');
+                wrapper.className = "table-slot-container flex items-center justify-center";
+                wrapper.style.gridColumnStart = pos.col;
+                if (pos.colSpan) wrapper.style.gridColumnEnd = `span ${pos.colSpan}`;
+                wrapper.style.gridRowStart = pos.row;
+
+                const dimensionClass = pos.isHorizontal ? 'table-frame-horizontal' : 'table-frame-vertical';
+
+                const tableCard = document.createElement('div');
+                tableCard.className = `billiard-wood-frame p-1 rounded-xl transition-all ${dimensionClass} cursor-pointer active:scale-95 md:hover:scale-105 shadow-md ${
+                    isSelected ? 'ring-2 md:ring-4 ring-amber-400 scale-105 shadow-[0_0_20px_rgba(251,191,36,.3)]' : 'opacity-90'
+                }`;
+
+                tableCard.innerHTML = `
+                    <div class="${feltClass} w-full h-full rounded-lg flex flex-col items-center justify-center text-white relative p-1 text-center">
+                        <span class="text-[11px] md:text-xs font-extrabold leading-tight tracking-wide break-words max-w-full px-0.5">${tableName}</span>
+                        <span class="text-[9px] md:text-[10px] text-amber-200 mt-0.5 leading-none font-semibold">R${price}/hr</span>
+                        ${isSelected ? '<span class="text-[8px] md:text-[9px] bg-amber-400 text-black px-1.5 rounded-md absolute top-1 right-1 font-bold">✓</span>' : ''}
+                    </div>
+                `;
+
+                tableCard.addEventListener('click', () => toggleAdminTableSelection({ id: num, name: tableName, price }));
+                wrapper.appendChild(tableCard);
+                container.appendChild(wrapper);
+            });
+        }
+
+        function renderAdminHeyballZone() {
+            const container = document.getElementById('admin-heyball-zone-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            heyballZoneTables.forEach(tDef => {
+                const num = tDef.id;
+                const tableData = appState.tables.find(t => Number(t.id) === num || Number(t.number) === num);
+                const price = tableData ? (tableData.price || 60) : 60;
+                const isSelected = appState.selectedTables.some(t => Number(t.id) === num);
+                const feltClass = tDef.type === 'heyball' ? 'billiard-table-cloth-green' : 'billiard-table-cloth-blue';
+
+                const tableCard = document.createElement('div');
+                tableCard.className = `billiard-wood-frame p-1 rounded-xl transition-all table-frame-vertical cursor-pointer active:scale-95 md:hover:scale-105 shadow-md ${
+                    isSelected ? 'ring-2 md:ring-4 ring-amber-400 scale-105 shadow-[0_0_20px_rgba(251,191,36,.3)]' : 'opacity-90'
+                }`;
+
+                tableCard.innerHTML = `
+                    <div class="${feltClass} w-full h-full rounded-lg flex flex-col items-center justify-center text-white relative p-1 text-center">
+                        <span class="text-[10px] md:text-xs font-extrabold leading-tight tracking-wide break-words max-w-full px-0.5">${tDef.name}</span>
+                        <span class="text-[8px] md:text-[10px] text-amber-200 leading-none font-semibold mt-0.5">R${price}/hr</span>
+                        ${isSelected ? '<span class="text-[8px] md:text-[9px] bg-amber-400 text-black px-1.5 rounded-md absolute top-1 right-1 font-bold">✓</span>' : ''}
+                    </div>
+                `;
+
+                tableCard.addEventListener('click', () => toggleAdminTableSelection({ id: num, name: tDef.name, price }));
+                container.appendChild(tableCard);
+            });
+        }
+
+        function toggleAdminTableSelection(table) {
+            const index = appState.selectedTables.findIndex(t => Number(t.id) === Number(table.id));
+            if (index > -1) {
+                appState.selectedTables.splice(index, 1);
+            } else {
+                appState.selectedTables.push(table);
+            }
+            renderAdminFloorPlan();
+        }
+
+        function clearAdminSelection() {
+            appState.selectedTables = [];
+            renderAdminFloorPlan();
+        }
+
+        function updateAdminSelectionUI() {
+            const count = appState.selectedTables.length;
+            const badge = document.getElementById('admin-selected-badge');
+            const clearBtn = document.getElementById('clear-admin-selection-btn');
+
+            if (badge) {
+                badge.innerText = count === 0 ? '0 tables selected' : `${count} table(s) selected: ` + appState.selectedTables.map(t => `T${t.id}`).join(', ');
+            }
+            if (clearBtn) {
+                if (count > 0) clearBtn.classList.remove('hidden');
+                else clearBtn.classList.add('hidden');
             }
         }
 
@@ -768,7 +1013,7 @@
                     track.appendChild(gridLine);
                 }
 
-                const tableBookings = appState.allDateBookings.filter(b => b.table_id === table.id && b.is_active === true);
+                const tableBookings = appState.allDateBookings.filter(b => Number(b.table_id) === Number(table.id) && b.is_active === true);
 
                 tableBookings.forEach(b => {
                     const { startMin, durationMin } = getBookingTimeRange(b);
@@ -817,23 +1062,19 @@
 
                 let methodBadge = '';
                 if (b.payment_method === 'CASH') {
-    methodBadge = `<span class="px-2 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-md font-bold">CASH</span>`;
-    } else if (b.payment_method === 'CARD') {
-        methodBadge = `<span class="px-2 py-0.5 text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-md font-bold">CARD</span>`;
-    } else if (b.payment_method === 'ONLINE') {
-        methodBadge = `<span class="px-2 py-0.5 text-[10px] bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-md font-bold">ONLINE BOOKING</span>`;
-    } else {
-        methodBadge = `
-            <div class="flex items-center gap-1.5">
-                <button onclick="updatePaymentMethod('${b.id}', 'CASH')" class="px-2 py-1 text-[10px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg transition-all">
-                    Cash
-                </button>
-                <button onclick="updatePaymentMethod('${b.id}', 'CARD')" class="px-2 py-1 text-[10px] font-bold bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg transition-all">
-                    Card
-                </button>
-            </div>
-        `;
-        }
+                    methodBadge = `<span class="px-2 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-md font-bold">CASH</span>`;
+                } else if (b.payment_method === 'CARD') {
+                    methodBadge = `<span class="px-2 py-0.5 text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-md font-bold">CARD</span>`;
+                } else if (b.payment_method === 'ONLINE') {
+                    methodBadge = `<span class="px-2 py-0.5 text-[10px] bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-md font-bold">ONLINE BOOKING</span>`;
+                } else {
+                    methodBadge = `
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="updatePaymentMethod('${b.id}', 'CASH')" class="px-2 py-1 text-[10px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg transition-all">Cash</button>
+                            <button onclick="updatePaymentMethod('${b.id}', 'CARD')" class="px-2 py-1 text-[10px] font-bold bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-lg transition-all">Card</button>
+                        </div>
+                    `;
+                }
 
                 tr.innerHTML = `
                     <td class="p-3 font-mono text-xs text-amber-400">${b.ref_id || 'N/A'}</td>
@@ -940,22 +1181,6 @@
                 console.error('Payment update error:', err);
                 showToast('Network error while updating payment method.', 'error');
             }
-        }
-
-        function populateActionFormControls() {
-            const tablesContainer = document.getElementById('action-tables-container');
-            
-            if (appState.tables.length === 0) {
-                tablesContainer.innerHTML = `<span class="text-xs text-gray-500 col-span-full">No tables found.</span>`;
-                return;
-            }
-
-            tablesContainer.innerHTML = appState.tables.map(t => `
-                <label class="flex items-center space-x-2 text-xs text-gray-300 cursor-pointer hover:text-white transition-colors">
-                    <input type="checkbox" name="action-tables" value="${t.id}" class="rounded bg-gray-900 border-gray-700 text-amber-500 focus:ring-amber-500">
-                    <span>T${t.id} (R${t.price})</span>
-                </label>
-            `).join('');
         }
 
         function calculateEndTime(startTimeStr, hoursToAdd) {
