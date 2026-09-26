@@ -175,8 +175,7 @@
                     </div>
                     <button type="button" id="clear-admin-selection-btn" onclick="clearAdminSelection()" class="text-xs text-gray-300 hover:text-white px-3 py-1.5 bg-gray-950 border border-gray-700 rounded-xl hidden transition-all">Clear selection</button>
                 </div>
-                
-                <!-- Action Form Controls -->
+                                   <!-- Action Form Controls -->
                 <form id="action-items-form" class="space-y-4 max-w-2xl mx-auto bg-gray-950 border border-gray-800 p-5 rounded-2xl relative">
                     <div class="flex items-center justify-between border-b border-gray-800 pb-3">
                         <span class="text-xs font-bold text-amber-400 uppercase">Selected Tables for Action:</span>
@@ -193,6 +192,11 @@
                         </select>
                     </div>
 
+                    <button type="submit" id="btn-submit-action" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-all flex items-center justify-center gap-2">
+                        <span>Apply Action Item</span>
+                    </button>
+                </form>
+             
                 <!-- Interactive Floorplan Selection Area -->
                 <div class="bg-gray-950/90 rounded-2xl border border-gray-800 p-4 overflow-x-auto">
                     <div class="floorplan-grid min-w-[780px] md:min-w-[960px] mx-auto py-2">
@@ -256,10 +260,6 @@
                         <input type="number" id="walkin-duration" min="1" max="12" value="1" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
                     </div>
 
-                    <button type="submit" id="btn-submit-action" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-all flex items-center justify-center gap-2">
-                        <span>Apply Action Item</span>
-                    </button>
-                </form>
             </div>
 
             <!-- TAB 4: Monthly Overview -->
