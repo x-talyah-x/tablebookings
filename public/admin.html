@@ -75,17 +75,28 @@
 
     <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- LEFT SIDEBAR -->
-    <aside class="w-full md:w-64 border-b md:border-b-0 md:border-r border-gray-800 bg-gray-950/80 backdrop-blur-md flex-shrink-0 flex flex-col">
-        <div class="p-6 border-b border-gray-800/60 flex items-center gap-3">
-            <h1 class="text-xl font-extrabold tracking-tight text-white">Tee's 🎱 Cueflix <span class="text-amber-500 text-sm block md:inline">Admin</span></h1>
+    <!-- LEFT SIDEBAR WITH COLLAPSIBLE TOGGLE -->
+    <aside id="sidebar" class="w-full md:w-64 border-b md:border-b-0 md:border-r border-gray-800 bg-gray-950/80 backdrop-blur-md flex-shrink-0 flex flex-col transition-all duration-300">
+        <div class="p-6 border-b border-gray-800/60 flex items-center justify-between">
+            <h1 class="text-xl font-extrabold tracking-tight text-white sidebar-title">Tee's 🎱 Cueflix <span class="text-amber-500 text-sm block md:inline">Admin</span></h1>
+            <button onclick="toggleSidebar()" class="text-gray-400 hover:text-white p-1 rounded-lg bg-gray-900 border border-gray-800 hidden md:flex items-center justify-center">
+                <i data-lucide="chevrons-left" id="sidebar-toggle-icon" class="w-4 h-4"></i>
+            </button>
         </div>
 
-        <nav class="p-4 flex flex-row md:flex-col space-x-2 md:space-x-0 md:space-y-2 overflow-x-auto md:overflow-x-visible">
-            <button id="tab-btn-matrix" onclick="switchAdminTab('matrix')" class="w-full text-left py-3 px-4 text-sm font-bold rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 transition-all whitespace-nowrap">Timeline Calendar View</button>
-            <button id="tab-btn-day-bookings" onclick="switchAdminTab('day-bookings')" class="w-full text-left py-3 px-4 text-sm font-bold rounded-xl text-gray-400 hover:text-white hover:bg-gray-900 transition-all whitespace-nowrap">Day Bookings</button>
-            <button id="tab-btn-actions" onclick="switchAdminTab('actions')" class="w-full text-left py-3 px-4 text-sm font-bold rounded-xl text-gray-400 hover:text-white hover:bg-gray-900 transition-all whitespace-nowrap">Capture Tables</button>
-            <button id="tab-btn-month" onclick="switchAdminTab('month')" class="w-full text-left py-3 px-4 text-sm font-bold rounded-xl text-gray-400 hover:text-white hover:bg-gray-900 transition-all whitespace-nowrap">Monthly Overview</button>
+        <nav id="sidebar-nav" class="p-4 flex flex-row md:flex-col space-x-2 md:space-x-0 md:space-y-2 overflow-x-auto md:overflow-x-visible transition-all">
+            <button id="tab-btn-matrix" onclick="switchAdminTab('matrix')" class="w-full text-left py-3 px-4 text-sm font-bold rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 transition-all whitespace-nowrap flex items-center gap-2">
+                <i data-lucide="calendar" class="w-4 h-4 flex-shrink-0"></i><span class="nav-text">Timeline Calendar View</span>
+            </button>
+            <button id="tab-btn-day-bookings" onclick="switchAdminTab('day-bookings')" class="w-full text-left py-3 px-4 text-sm font-bold rounded-xl text-gray-400 hover:text-white hover:bg-gray-900 transition-all whitespace-nowrap flex items-center gap-2">
+                <i data-lucide="list-ordered" class="w-4 h-4 flex-shrink-0"></i><span class="nav-text">Day Bookings</span>
+            </button>
+            <button id="tab-btn-actions" onclick="switchAdminTab('actions')" class="w-full text-left py-3 px-4 text-sm font-bold rounded-xl text-gray-400 hover:text-white hover:bg-gray-900 transition-all whitespace-nowrap flex items-center gap-2">
+                <i data-lucide="layout-grid" class="w-4 h-4 flex-shrink-0"></i><span class="nav-text">Capture Tables</span>
+            </button>
+            <button id="tab-btn-month" onclick="switchAdminTab('month')" class="w-full text-left py-3 px-4 text-sm font-bold rounded-xl text-gray-400 hover:text-white hover:bg-gray-900 transition-all whitespace-nowrap flex items-center gap-2">
+                <i data-lucide="bar-chart-3" class="w-4 h-4 flex-shrink-0"></i><span class="nav-text">Monthly Overview</span>
+            </button>
         </nav>
     </aside>
 
@@ -166,113 +177,117 @@
                 </div>
             </div>
 
-            <!-- TAB 3: Capture Tables / Actions Form -->
+            <!-- TAB 3: Capture Tables / Actions Form (Side-by-Side Layout) -->
             <div id="admin-tab-actions" class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hidden space-y-6">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
                     <div>
                         <h3 class="text-lg font-bold text-amber-400">Admin Action Management</h3>
-                        <p class="text-xs text-gray-400 mt-0.5">Select tables from the interactive floorplan below and choose your admin action.</p>
+                        <p class="text-xs text-gray-400 mt-0.5">Select tables from the interactive floorplan and complete the action configuration.</p>
                     </div>
                     <button type="button" id="clear-admin-selection-btn" onclick="clearAdminSelection()" class="text-xs text-gray-300 hover:text-white px-3 py-1.5 bg-gray-950 border border-gray-700 rounded-xl hidden transition-all">Clear selection</button>
                 </div>
              
-                <!-- Interactive Floorplan Selection Area -->
-                <div class="bg-gray-950/90 rounded-2xl border border-gray-800 p-4 overflow-x-auto">
-                    <div class="floorplan-grid min-w-[780px] md:min-w-[960px] mx-auto py-2">
-                        
-                        <div class="col-span-4 col-start-2 row-start-1 bg-gray-900/90 border border-gray-800 rounded-xl px-4 py-1.5 flex items-center justify-between text-xs text-gray-300">
-                            <span class="text-gray-400 font-semibold text-[10px] md:text-[11px] uppercase tracking-wider">Main Arena Table Types:</span>
-                            <div class="flex items-center gap-4">
-                                <div class="flex items-center gap-1.5">
-                                    <span class="type-key-box bg-blue-600 border border-blue-400"></span>
-                                    <span class="text-[10px] md:text-xs font-medium">Blue: Blackball Tables</span>
-                                </div>
-                                <div class="flex items-center gap-1.5">
-                                    <span class="type-key-box bg-emerald-600 border border-emerald-400"></span>
-                                    <span class="text-[10px] md:text-xs font-medium">Green: Rasson Tables</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="zone-restroom rounded-xl text-sky-400 font-semibold text-[10px] md:text-xs flex items-center justify-center col-start-2 row-start-2">Mens</div>
-                        <div class="zone-stage rounded-xl text-amber-400 font-bold text-xs md:text-sm flex items-center justify-center col-span-2 col-start-3 row-start-2">STAGE</div>
-                        <div class="zone-restroom rounded-xl text-sky-400 font-semibold text-[10px] md:text-xs flex items-center justify-center col-start-5 row-start-2">Ladies</div>
-                        
-                        <div class="zone-heyball rounded-2xl p-2 md:p-3 text-gray-300 font-bold text-[10px] md:text-xs flex flex-col justify-between items-center text-center col-start-1 row-start-2 row-span-7 overflow-y-auto">
-                            <div class="w-full border-b border-gray-600/30 pb-2 mb-2 shrink-0">
-                                <span class="text-xs md:text-sm block text-gray-200">Heyball & 9-Ball Zone</span>
-                                <div class="flex items-center justify-center gap-2 mt-1.5 text-[9px] md:text-[10px] font-normal text-gray-400">
-                                <div class="flex items-center gap-1">
-                                    <span class="type-key-box bg-emerald-600 border border-emerald-400 w-2.5 h-2.5"></span>
-                                    <span>Chinese Heyball</span>
-                                </div>
-                                <div class="flex items-center gap-1">
-                                    <span class="type-key-box bg-blue-600 border border-blue-400 w-2.5 h-2.5"></span>
-                                    <span>American 9ball</span>
-                                </div>
-                            </div>
-                            </div>
-                            <div id="admin-heyball-zone-container" class="grid grid-cols-2 gap-2 md:gap-3 w-full my-auto justify-items-center"></div>
+                <!-- Side-by-Side Container -->
+                <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+                    
+                    <!-- Left Column: Interactive Floorplan Selection Area (span 7) -->
+                    <div class="xl:col-span-7 bg-gray-950/90 rounded-2xl border border-gray-800 p-4 overflow-x-auto">
+                        <div class="floorplan-grid min-w-[780px] md:min-w-[960px] mx-auto py-2">
                             
-                            <div class="w-full mt-3 pt-2 border-t border-gray-600/30 shrink-0">
-                                <div class="zone-door rounded-xl p-1.5 text-amber-300 font-bold text-[10px] md:text-xs flex items-center justify-center gap-1 w-full uppercase tracking-wider">
-                                    <i data-lucide="door-open" class="w-3.5 h-3.5"></i> Entrance
+                            <div class="col-span-4 col-start-2 row-start-1 bg-gray-900/90 border border-gray-800 rounded-xl px-4 py-1.5 flex items-center justify-between text-xs text-gray-300">
+                                <span class="text-gray-400 font-semibold text-[10px] md:text-[11px] uppercase tracking-wider">Main Arena Table Types:</span>
+                                <div class="flex items-center gap-4">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="type-key-box bg-blue-600 border border-blue-400"></span>
+                                        <span class="text-[10px] md:text-xs font-medium">Blue: Blackball Tables</span>
+                                    </div>
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="type-key-box bg-emerald-600 border border-emerald-400"></span>
+                                        <span class="text-[10px] md:text-xs font-medium">Green: Rasson Tables</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div id="admin-table-node-container" class="contents"></div>
-                        <div class="zone-door rounded-xl p-1.5 text-amber-300 font-bold text-[8px] md:text-xs flex items-center justify-center gap-1 text-center col-start-6 row-start-6 row-span-2 uppercase tracking-wider">
-                            <i data-lucide="door-open" class="w-3.5 h-3.5"></i> Exit
+                            <div class="zone-restroom rounded-xl text-sky-400 font-semibold text-[10px] md:text-xs flex items-center justify-center col-start-2 row-start-2">Mens</div>
+                            <div class="zone-stage rounded-xl text-amber-400 font-bold text-xs md:text-sm flex items-center justify-center col-span-2 col-start-3 row-start-2">STAGE</div>
+                            <div class="zone-restroom rounded-xl text-sky-400 font-semibold text-[10px] md:text-xs flex items-center justify-center col-start-5 row-start-2">Ladies</div>
+                            
+                            <div class="zone-heyball rounded-2xl p-2 md:p-3 text-gray-300 font-bold text-[10px] md:text-xs flex flex-col justify-between items-center text-center col-start-1 row-start-2 row-span-7 overflow-y-auto">
+                                <div class="w-full border-b border-gray-600/30 pb-2 mb-2 shrink-0">
+                                    <span class="text-xs md:text-sm block text-gray-200">Heyball & 9-Ball Zone</span>
+                                    <div class="flex items-center justify-center gap-2 mt-1.5 text-[9px] md:text-[10px] font-normal text-gray-400">
+                                    <div class="flex items-center gap-1">
+                                        <span class="type-key-box bg-emerald-600 border border-emerald-400 w-2.5 h-2.5"></span>
+                                        <span>Chinese Heyball</span>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <span class="type-key-box bg-blue-600 border border-blue-400 w-2.5 h-2.5"></span>
+                                        <span>American 9ball</span>
+                                    </div>
+                                </div>
+                                </div>
+                                <div id="admin-heyball-zone-container" class="grid grid-cols-2 gap-2 md:gap-3 w-full my-auto justify-items-center"></div>
+                                
+                                <div class="w-full mt-3 pt-2 border-t border-gray-600/30 shrink-0">
+                                    <div class="zone-door rounded-xl p-1.5 text-amber-300 font-bold text-[10px] md:text-xs flex items-center justify-center gap-1 w-full uppercase tracking-wider">
+                                        <i data-lucide="door-open" class="w-3.5 h-3.5"></i> Entrance
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="admin-table-node-container" class="contents"></div>
+                            <div class="zone-door rounded-xl p-1.5 text-amber-300 font-bold text-[8px] md:text-xs flex items-center justify-center gap-1 text-center col-start-6 row-start-6 row-span-2 uppercase tracking-wider">
+                                <i data-lucide="door-open" class="w-3.5 h-3.5"></i> Exit
+                            </div>
+                            <div class="zone-door rounded-xl p-1.5 text-amber-300 font-bold text-[8px] md:text-xs flex items-center justify-center gap-1 text-center col-start-3 row-start-9 uppercase tracking-wider">
+                                <i data-lucide="door-open" class="w-3.5 h-3.5"></i> Exit
+                            </div>
+                            <div class="zone-counter rounded-xl text-amber-400 font-bold text-[10px] md:text-xs flex items-center justify-center col-span-2 col-start-4 row-start-9">Counter</div>
                         </div>
-                        <div class="zone-door rounded-xl p-1.5 text-amber-300 font-bold text-[8px] md:text-xs flex items-center justify-center gap-1 text-center col-start-3 row-start-9 uppercase tracking-wider">
-                            <i data-lucide="door-open" class="w-3.5 h-3.5"></i> Exit
-                        </div>
-                        <div class="zone-counter rounded-xl text-amber-400 font-bold text-[10px] md:text-xs flex items-center justify-center col-span-2 col-start-4 row-start-9">Counter</div>
                     </div>
+
+                    <!-- Right Column: Action Form Controls (span 5) -->
+                    <div class="xl:col-span-5">
+                        <form id="action-items-form" class="space-y-4 bg-gray-950 border border-gray-800 p-5 rounded-2xl relative sticky top-6">
+                            <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+                                <span class="text-xs font-bold text-amber-400 uppercase">Selected Tables for Action:</span>
+                                <span id="admin-selected-badge" class="text-xs font-bold text-white bg-gray-900 border border-gray-700 px-3 py-1 rounded-xl">0 tables selected</span>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Action Type</label>
+                                <select id="action-type" onchange="toggleActionFields()" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
+                                    <option value="WALK_IN">Walk In (Starts Now)</option>
+                                    <option value="MAINTENANCE">Log Maintenance (Until 11 PM)</option>
+                                    <option value="RESERVED">Reserve Tables for League</option>
+                                    <option value="CLEAR_TABLE">Clear Booking</option>
+                                </select>
+                            </div>
+
+                            <!-- CONDITIONAL TIME FIELDS -->
+                            <div id="time-range-fields" class="grid grid-cols-2 gap-4 hidden">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Start Time</label>
+                                    <input type="time" id="action-start-time" value="11:00" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
+                                </div>
+                                <div id="duration-field-wrapper">
+                                    <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Duration (Hours)</label>
+                                    <input type="number" id="action-duration" min="1" max="12" value="2" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
+                                </div>
+                            </div>
+
+                            <div id="walkin-hours-field" class="block">
+                                <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Walk-In Duration (Hours)</label>
+                                <input type="number" id="walkin-duration" min="1" max="12" value="1" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
+                            </div>
+
+                            <button type="submit" id="btn-submit-action" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-all flex items-center justify-center gap-2">
+                                <span>Apply Action Item</span>
+                            </button>
+                        </form>
+                    </div>
+
                 </div>
-
-                                                   <!-- Action Form Controls -->
-                <form id="action-items-form" class="space-y-4 max-w-2xl mx-auto bg-gray-950 border border-gray-800 p-5 rounded-2xl relative">
-                    <div class="flex items-center justify-between border-b border-gray-800 pb-3">
-                        <span class="text-xs font-bold text-amber-400 uppercase">Selected Tables for Action:</span>
-                        <span id="admin-selected-badge" class="text-xs font-bold text-white bg-gray-900 border border-gray-700 px-3 py-1 rounded-xl">0 tables selected</span>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Action Type</label>
-                        <select id="action-type" onchange="toggleActionFields()" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
-                            <option value="WALK_IN">Walk In (Starts Now)</option>
-                            <option value="MAINTENANCE">Log Maintenance (Until 11 PM)</option>
-                            <option value="RESERVED">Reserve Tables for League</option>
-                            <option value="CLEAR_TABLE">Clear Booking</option>
-                        </select>
-                    </div>
-
-                        <!-- CONDITIONAL TIME FIELDS -->
-                    <div id="time-range-fields" class="grid grid-cols-2 gap-4 hidden">
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Start Time</label>
-                            <input type="time" id="action-start-time" value="11:00" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
-                        </div>
-                        <div id="duration-field-wrapper">
-                            <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Duration (Hours)</label>
-                            <input type="number" id="action-duration" min="1" max="12" value="2" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
-                        </div>
-                    </div>
-
-                    <div id="walkin-hours-field" class="block">
-                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Walk-In Duration (Hours)</label>
-                        <input type="number" id="walkin-duration" min="1" max="12" value="1" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
-                    </div>
-
-                    <button type="submit" id="btn-submit-action" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-all flex items-center justify-center gap-2">
-                        <span>Apply Action Item</span>
-                    </button>
-                </form>
-
-                
-
             </div>
 
             <!-- TAB 4: Monthly Overview -->
@@ -470,7 +485,8 @@
             allDateBookings: [],
             selectedDate: new Date().toISOString().split('T')[0],
             pendingWalkInData: null,
-            selectedTables: []
+            selectedTables: [],
+            isSidebarCollapsed: false
         };
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -486,6 +502,30 @@
             loadAdminData();
             if (typeof lucide !== 'undefined') lucide.createIcons();
         });
+
+        // Toggle Sidebar Collapse Function
+        function toggleSidebar() {
+            appState.isSidebarCollapsed = !appState.isSidebarCollapsed;
+            const sidebar = document.getElementById('sidebar');
+            const toggleIcon = document.getElementById('sidebar-toggle-icon');
+            const navTexts = document.querySelectorAll('.nav-text');
+            const sidebarTitle = document.querySelector('.sidebar-title');
+
+            if (appState.isSidebarCollapsed) {
+                sidebar.classList.remove('md:w-64');
+                sidebar.classList.add('md:w-20');
+                toggleIcon.setAttribute('data-lucide', 'chevrons-right');
+                navTexts.forEach(el => el.classList.add('md:hidden'));
+                sidebarTitle.classList.add('md:hidden');
+            } else {
+                sidebar.classList.remove('md:w-20');
+                sidebar.classList.add('md:w-64');
+                toggleIcon.setAttribute('data-lucide', 'chevrons-left');
+                navTexts.forEach(el => el.classList.remove('md:hidden'));
+                sidebarTitle.classList.remove('md:hidden');
+            }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
 
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
@@ -548,10 +588,10 @@
                 const btn = document.getElementById(`tab-btn-${t}`);
                 if (t === tab) {
                     el.classList.remove('hidden');
-                    btn.className = "w-full text-left py-3 px-4 text-sm font-bold rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 transition-all whitespace-nowrap";
+                    btn.className = "w-full text-left py-3 px-4 text-sm font-bold rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 transition-all whitespace-nowrap flex items-center gap-2";
                 } else {
                     el.classList.add('hidden');
-                    btn.className = "w-full text-left py-3 px-4 text-sm font-bold rounded-xl text-gray-400 hover:text-white hover:bg-gray-900 transition-all whitespace-nowrap";
+                    btn.className = "w-full text-left py-3 px-4 text-sm font-bold rounded-xl text-gray-400 hover:text-white hover:bg-gray-900 transition-all whitespace-nowrap flex items-center gap-2";
                 }
             });
 
