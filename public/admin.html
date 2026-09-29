@@ -499,8 +499,8 @@
             const errEl = document.getElementById('login-error');
 
             if (inputVal === ADMIN_PASSWORD_HASH) {
-                // Set session duration to 1 day
-                const thirtyDaysMs = 1 * 24 * 60 * 60 * 1000;
+                // Set session duration to 30 days (Long session)
+                const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
                 const expiryTime = new Date().getTime() + thirtyDaysMs;
 
                 localStorage.setItem('cueflix_admin_auth', 'true');
@@ -573,7 +573,7 @@
         let appState = {
             tables: [],
             allDateBookings: [],
-            selectedDate: new Date().toISOString().split('T')[0],
+            selectedDate: new Date().toLocaleDateString('en-CA'),
             pendingWalkInData: null,
             selectedTables: [],
             isSidebarCollapsed: false
@@ -583,6 +583,7 @@
             const now = new Date();
             const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
             
+            appState.selectedDate = now.toLocaleDateString('en-CA');
             document.getElementById('selected-date').value = appState.selectedDate;
             document.getElementById('selected-month').value = monthStr;            
             document.getElementById('selected-date').addEventListener('change', onDateChange);
@@ -1251,7 +1252,7 @@
             document.getElementById('edit-booking-id').value = booking.id;
             document.getElementById('edit-user-name').value = booking.user_name || '';
             document.getElementById('edit-phone').value = booking.phone || '';
-            document.getElementById('edit-booking-date').value = booking.booking_date || appState.selectedDate;
+            document.getElementById('edit-booking-date').value = booking.booking_date || new Date().toLocaleDateString('en-CA');
             document.getElementById('edit-time-slot').value = booking.time_slot || '';
             document.getElementById('edit-total-price').value = booking.total_price || 0;
             document.getElementById('edit-payment-method').value = booking.payment_method || '';
