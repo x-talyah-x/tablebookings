@@ -59,13 +59,6 @@ function doSlotsOverlap(rangeA, rangeB) {
     return Math.max(rangeA.startMin, rangeB.startMin) < Math.min(rangeA.endMin, rangeB.endMin);
 }
 
-// Helper to escape CSV values
-function escapeCSV(val) {
-    if (val === null || val === undefined) return '""';
-    const str = String(val).replace(/"/g, '""');
-    return `"${str}"`;
-}
-
 // ==========================================
 // PUBLIC & CLIENT API ROUTES
 // ==========================================
@@ -211,7 +204,6 @@ app.post('/api/payments/yoco/create-checkout', async (req, res) => {
 
     const targetRange = convertSlotToRange(slot, startTime, durationHours);
 
-    // Verify table availability before initiating checkout
     const { data: activeBookings, error: fetchErr } = await supabase
         .from('bookings')
         .select('*')
@@ -233,7 +225,6 @@ app.post('/api/payments/yoco/create-checkout', async (req, res) => {
         }
     }
 
-    // Calculate total price in CENTS
     const { data: dbTables } = await supabase.from('pool_tables').select('id, price');
     const priceMap = {};
     (dbTables || []).forEach(t => priceMap[t.id] = Number(t.price) || 50);
@@ -263,7 +254,6 @@ app.post('/api/payments/yoco/create-checkout', async (req, res) => {
 
         const refId = `YOC-${Math.floor(100000 + Math.random() * 900000)}`;
 
-        // Construct Yoco Payload
         const yocoPayload = {
             amount: amountInCents,
             currency: 'ZAR',
@@ -295,7 +285,6 @@ app.post('/api/payments/yoco/create-checkout', async (req, res) => {
             });
         }
 
-        // Pre-insert pending booking rows into DB linked to refId
         const pricePerTable = totalRands / tableIds.length;
         const pendingRows = tableIds.map(tableId => ({
             ref_id: refId,
@@ -334,7 +323,6 @@ app.post('/api/payments/yoco/create-checkout', async (req, res) => {
     }
 });
 
-// 2. Redirect Success Callback (Handles immediate user landing & fallback sync)
 app.get('/api/payments/yoco/success', async (req, res) => {
     const { refId } = req.query;
 
@@ -368,7 +356,6 @@ app.get('/api/payments/yoco/success', async (req, res) => {
     return res.redirect(`/?payment=success&refId=${refId}`);
 });
 
-// 3. Webhook Handler (Handles background asynchronous confirmation)
 app.post('/api/payments/yoco/webhook', async (req, res) => {
     try {
         const event = req.body;
@@ -408,7 +395,6 @@ app.post('/api/payments/yoco/webhook', async (req, res) => {
 // ADMIN DASHBOARD API ROUTES
 // ==========================================
 
-// GET DAY BOOKINGS & DAILY PAYMENT SUMMARY
 app.get('/api/admin/day-bookings', async (req, res) => {
     const { date } = req.query;
     if (!date) return res.status(400).json({ error: 'Date parameter required (YYYY-MM-DD)' });
@@ -439,7 +425,6 @@ app.get('/api/admin/day-bookings', async (req, res) => {
     });
 });
 
-// EXECUTE ADMIN ACTION ITEM
 app.post('/api/admin/action-item', async (req, res) => {
     const { actionType, tables, slots, date, durationHours, startTimeOverride, paymentMethod, price } = req.body;
 
@@ -558,104 +543,6 @@ app.post('/api/admin/action-item', async (req, res) => {
     res.status(201).json({ success: true, count: data.length, bookings: data });
 });
 
-// MONTHLY SUMMARY AGGREGATION
-app.get('/api/admin/month-summary', async (req, res) => {
-    const { month } = req.query;
-    if (!month) return res.status(400).json({ error: 'Month parameter required (YYYY-MM)' });
-
-    const startDate = `${month}-01`;
-    const [year, monthNum] = month.split('-').map(Number);
-    const daysInMonth = new Date(year, monthNum, 0).getDate();
-    const endDate = `${month}-${String(daysInMonth).padStart(2, '0')}`;
-
-    const { data: bookings, error } = await supabase
-        .from('bookings')
-        .select('*')
-        .gte('booking_date', startDate)
-        .lte('booking_date', endDate)
-        .eq('is_active', true);
-
-    if (error) return res.status(500).json({ error: error.message });
-
-    let totalRevenue = 0;
-    let totalCash = 0;
-    let totalCard = 0;
-    const days = {};
-
-    (bookings || []).forEach(b => {
-        const amt = Number(b.total_price) || 0;
-        const dKey = b.booking_date;
-
-        if (!days[dKey]) {
-            days[dKey] = { total: 0, cash: 0, card: 0, count: 0 };
-        }
-
-        days[dKey].total += amt;
-        days[dKey].count += 1;
-        totalRevenue += amt;
-
-        if (b.payment_method === 'CASH') {
-            days[dKey].cash += amt;
-            totalCash += amt;
-        } else if (b.payment_method === 'CARD') {
-            days[dKey].card += amt;
-            totalCard += amt;
-        }
-    });
-
-    res.json({
-        month,
-        totalRevenue,
-        totalCash,
-        totalCard,
-        days
-    });
-});
-
-// EXPORT MONTHLY BOOKINGS TO CSV
-app.get('/api/admin/export-month-csv', async (req, res) => {
-    const { month } = req.query;
-    if (!month) return res.status(400).send('Month parameter required (YYYY-MM)');
-
-    const startDate = `${month}-01`;
-    const [year, monthNum] = month.split('-').map(Number);
-    const daysInMonth = new Date(year, monthNum, 0).getDate();
-    const endDate = `${month}-${String(daysInMonth).padStart(2, '0')}`;
-
-    const { data: bookings, error } = await supabase
-        .from('bookings')
-        .select('*')
-        .gte('booking_date', startDate)
-        .lte('booking_date', endDate)
-        .order('booking_date', { ascending: true });
-
-    if (error) return res.status(500).send(error.message);
-
-    const headers = ['Ref ID', 'Date', 'Time Slot', 'Table ID', 'User Name', 'Phone', 'Status', 'Payment Method', 'Total Price', 'Is Active'];
-    const csvRows = [headers.join(',')];
-
-    (bookings || []).forEach(b => {
-        const row = [
-            escapeCSV(b.ref_id),
-            escapeCSV(b.booking_date),
-            escapeCSV(b.time_slot),
-            escapeCSV(b.table_id),
-            escapeCSV(b.user_name),
-            escapeCSV(b.phone),
-            escapeCSV(b.status),
-            escapeCSV(b.payment_method),
-            escapeCSV(b.total_price),
-            escapeCSV(b.is_active)
-        ];
-        csvRows.push(row.join(','));
-    });
-
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="bookings-${month}.csv"`);
-    res.status(200).send(csvRows.join('\n'));
-});
-
-// GET ALL BOOKINGS (ADMIN OVERVIEW)
 app.get('/api/admin/bookings', async (req, res) => {
     const { date, status } = req.query;
     let query = supabase.from('bookings').select('*').order('created_at', { ascending: false });
@@ -668,7 +555,6 @@ app.get('/api/admin/bookings', async (req, res) => {
     res.json(data || []);
 });
 
-// ADMIN OVERRIDE CREATE BOOKING
 app.post('/api/admin/bookings', async (req, res) => {
     const { table_id, booking_date, start_time, duration_hours, time_slot, user_name, phone, status } = req.body;
 
@@ -712,60 +598,6 @@ app.post('/api/admin/bookings', async (req, res) => {
     res.status(201).json(data[0]);
 });
 
-// UPDATE FULL BOOKING (ADMIN EDIT)
-app.put('/api/admin/bookings/:id', async (req, res) => {
-    const { id } = req.params;
-    const { user_name, phone, table_id, booking_date, start_time, duration_hours, time_slot, payment_method, total_price, status, is_active } = req.body;
-
-    if (booking_date && table_id && time_slot) {
-        const targetRange = convertSlotToRange(time_slot, start_time, duration_hours);
-
-        const { data: activeBookings, error: fetchErr } = await supabase
-            .from('bookings')
-            .select('*')
-            .eq('booking_date', booking_date)
-            .eq('table_id', Number(table_id))
-            .eq('is_active', true)
-            .neq('id', id);
-
-        if (fetchErr) return res.status(500).json({ error: fetchErr.message });
-
-        const conflict = (activeBookings || []).find(b => {
-            const existingRange = convertSlotToRange(b.time_slot, b.start_time, b.duration_hours);
-            return doSlotsOverlap(targetRange, existingRange);
-        });
-
-        if (conflict) {
-            return res.status(409).json({ error: `Table ${table_id} is already occupied during ${time_slot} on ${booking_date}.` });
-        }
-    }
-
-    const updates = {};
-    if (user_name !== undefined) updates.user_name = user_name;
-    if (phone !== undefined) updates.phone = phone;
-    if (table_id !== undefined) updates.table_id = Number(table_id);
-    if (booking_date !== undefined) updates.booking_date = booking_date;
-    if (start_time !== undefined) updates.start_time = start_time;
-    if (duration_hours !== undefined) updates.duration_hours = Number(duration_hours);
-    if (time_slot !== undefined) updates.time_slot = time_slot;
-    if (payment_method !== undefined) updates.payment_method = payment_method;
-    if (total_price !== undefined) updates.total_price = Number(total_price);
-    if (status !== undefined) updates.status = status;
-    if (is_active !== undefined) updates.is_active = is_active;
-
-    const { data, error } = await supabase
-        .from('bookings')
-        .update(updates)
-        .eq('id', id)
-        .select();
-
-    if (error) return res.status(500).json({ error: error.message });
-    if (!data || data.length === 0) return res.status(404).json({ error: 'Booking not found.' });
-
-    res.json({ success: true, booking: data[0] });
-});
-
-// UPDATE BOOKING STATUS
 app.patch('/api/admin/bookings/:id/status', async (req, res) => {
     const { id } = req.params;
     const { status, is_active } = req.body;
@@ -784,7 +616,6 @@ app.patch('/api/admin/bookings/:id/status', async (req, res) => {
     res.json(data[0]);
 });
 
-// MANAGE TABLES
 app.patch('/api/admin/tables/:id', async (req, res) => {
     const { id } = req.params;
     const { price, is_maintenance, table_type } = req.body;
@@ -804,7 +635,6 @@ app.patch('/api/admin/tables/:id', async (req, res) => {
     res.json(data[0]);
 });
 
-// DELETE BOOKING
 app.delete('/api/admin/bookings/:id', async (req, res) => {
     const { id } = req.params;
     const { error } = await supabase.from('bookings').delete().eq('id', id);
@@ -813,7 +643,6 @@ app.delete('/api/admin/bookings/:id', async (req, res) => {
     res.json({ success: true, message: `Booking ${id} permanently deleted.` });
 });
 
-// UPDATE BOOKING PAYMENT METHOD
 app.patch('/api/admin/bookings/:id/payment', async (req, res) => {
     const { id } = req.params;
     const { payment_method } = req.body;
