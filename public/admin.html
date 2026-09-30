@@ -27,7 +27,6 @@
         }
         .animate-toast { animation: toastIn 0.25s ease-out forwards; }
 
-        /* Table Felt Themes & Floorplan styles */
         .billiard-table-cloth-blue { background: radial-gradient(circle, #5982db 0%, #1d4ed8 70%, #006796 100%); }
         .billiard-table-cloth-green { background: radial-gradient(circle, #059669 0%, #047857 70%, #064e3b 100%); }
         .billiard-wood-frame { background: linear-gradient(145deg, #5c2d12, #2a1205); }
@@ -99,7 +98,7 @@
 
     <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- LEFT SIDEBAR WITH COLLAPSIBLE TOGGLE -->
+    <!-- LEFT SIDEBAR -->
     <aside id="sidebar" class="w-full md:w-64 border-b md:border-b-0 md:border-r border-gray-800 bg-gray-950/80 backdrop-blur-md flex-shrink-0 flex flex-col transition-all duration-300">
         <div class="p-6 border-b border-gray-800/60 flex items-center justify-between">
             <h1 class="text-xl font-extrabold tracking-tight text-white sidebar-title">Tee's 🎱 Cueflix <span class="text-amber-500 text-sm block md:inline">Admin</span></h1>
@@ -117,9 +116,6 @@
             </button>
             <button id="tab-btn-actions" onclick="switchAdminTab('actions')" class="w-full text-left py-3 px-4 text-sm font-bold rounded-xl text-gray-400 hover:text-white hover:bg-gray-900 transition-all whitespace-nowrap flex items-center gap-2">
                 <i data-lucide="layout-grid" class="w-4 h-4 flex-shrink-0"></i><span class="nav-text">Capture Tables</span>
-            </button>
-            <button id="tab-btn-month" onclick="switchAdminTab('month')" class="w-full text-left py-3 px-4 text-sm font-bold rounded-xl text-gray-400 hover:text-white hover:bg-gray-900 transition-all whitespace-nowrap flex items-center gap-2">
-                <i data-lucide="bar-chart-3" class="w-4 h-4 flex-shrink-0"></i><span class="nav-text">Monthly Overview</span>
             </button>
             <div class="pt-4 mt-auto">
                 <button onclick="handleAdminLogout()" class="w-full text-left py-2.5 px-4 text-xs font-bold rounded-xl text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition-all whitespace-nowrap flex items-center gap-2">
@@ -147,12 +143,15 @@
 
         <section id="admin-view" class="space-y-6">
 
-            <!-- TAB 1: Timeline Matrix View -->
+            <!-- TAB 1: Timeline Matrix View (Diary Diary / Tables in Use) -->
             <div id="admin-tab-matrix" class="space-y-6">
                 <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 relative min-h-[300px]">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-bold text-white">Daily Visual Schedule</h3>
-                        <span id="matrix-date-label" class="text-xs font-semibold text-felt-400"></span>
+                        <div>
+                            <h3 class="text-lg font-bold text-white">Tables in Use & Diary Schedule</h3>
+                            <p class="text-xs text-gray-400">Overview of table bookings and status for the day.</p>
+                        </div>
+                        <span id="matrix-date-label" class="text-xs font-semibold text-felt-400 bg-gray-950 px-3 py-1.5 rounded-xl border border-gray-800"></span>
                     </div>
                     
                     <div class="overflow-x-auto">
@@ -197,8 +196,7 @@
                                 <th class="p-3">Time Slot</th>
                                 <th class="p-3">Table</th>
                                 <th class="p-3">Payment Method</th>
-                                <th class="p-3">Total Amount</th>
-                                <th class="p-3">Actions</th>
+                                <th class="p-3">Total Amount (Excl. Fee)</th>
                             </tr>
                         </thead>
                         <tbody id="admin-bookings-list" class="divide-y divide-gray-800/60"></tbody>
@@ -206,7 +204,7 @@
                 </div>
             </div>
 
-            <!-- TAB 3: Capture Tables / Actions Form (Side-by-Side Layout - Compact Form) -->
+            <!-- TAB 3: Capture Tables / Actions Form -->
             <div id="admin-tab-actions" class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hidden space-y-6">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
                     <div>
@@ -216,10 +214,9 @@
                     <button type="button" id="clear-admin-selection-btn" onclick="clearAdminSelection()" class="text-xs text-gray-300 hover:text-white px-3 py-1.5 bg-gray-950 border border-gray-700 rounded-xl hidden transition-all">Clear selection</button>
                 </div>
              
-                <!-- Side-by-Side Container (Expanded Floorplan Span, Compact Form Span) -->
                 <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
                     
-                    <!-- Left Column: Interactive Floorplan Selection Area (span 8) -->
+                    <!-- Left Column: Interactive Floorplan -->
                     <div class="xl:col-span-8 bg-gray-950/90 rounded-2xl border border-gray-800 p-4 overflow-x-auto">
                         <div class="floorplan-grid min-w-[780px] md:min-w-[960px] mx-auto py-2">
                             
@@ -245,15 +242,15 @@
                                 <div class="w-full border-b border-gray-600/30 pb-2 mb-2 shrink-0">
                                     <span class="text-xs md:text-sm block text-gray-200">Heyball & 9-Ball Zone</span>
                                     <div class="flex items-center justify-center gap-2 mt-1.5 text-[9px] md:text-[10px] font-normal text-gray-400">
-                                    <div class="flex items-center gap-1">
-                                        <span class="type-key-box bg-emerald-600 border border-emerald-400 w-2.5 h-2.5"></span>
-                                        <span>Chinese Heyball</span>
+                                        <div class="flex items-center gap-1">
+                                            <span class="type-key-box bg-emerald-600 border border-emerald-400 w-2.5 h-2.5"></span>
+                                            <span>Chinese Heyball</span>
+                                        </div>
+                                        <div class="flex items-center gap-1">
+                                            <span class="type-key-box bg-blue-600 border border-blue-400 w-2.5 h-2.5"></span>
+                                            <span>American 9ball</span>
+                                        </div>
                                     </div>
-                                    <div class="flex items-center gap-1">
-                                        <span class="type-key-box bg-blue-600 border border-blue-400 w-2.5 h-2.5"></span>
-                                        <span>American 9ball</span>
-                                    </div>
-                                </div>
                                 </div>
                                 <div id="admin-heyball-zone-container" class="grid grid-cols-2 gap-2 md:gap-3 w-full my-auto justify-items-center"></div>
                                 
@@ -275,9 +272,9 @@
                         </div>
                     </div>
 
-                    <!-- Right Column: Compact Action Form Controls (span 4) -->
-                    <div class="xl:col-span-4">
-                        <form id="action-items-form" class="space-y-3 bg-gray-950 border border-gray-800 p-4 rounded-2xl relative sticky top-6">
+                    <!-- Right Column: Action Form Controls & Tables In-Use Module -->
+                    <div class="xl:col-span-4 space-y-4">
+                        <form id="action-items-form" class="space-y-3 bg-gray-950 border border-gray-800 p-4 rounded-2xl relative">
                             <div class="flex items-center justify-between border-b border-gray-800 pb-2">
                                 <span class="text-[11px] font-bold text-amber-400 uppercase">Selected Tables:</span>
                                 <span id="admin-selected-badge" class="text-[11px] font-bold text-white bg-gray-900 border border-gray-700 px-2.5 py-0.5 rounded-lg truncate max-w-[160px]">0 tables</span>
@@ -293,7 +290,6 @@
                                 </select>
                             </div>
 
-                            <!-- CONDITIONAL TIME FIELDS -->
                             <div id="time-range-fields" class="grid grid-cols-2 gap-3 hidden">
                                 <div>
                                     <label class="block text-[10px] font-semibold text-gray-400 uppercase mb-1">Start Time</label>
@@ -314,39 +310,22 @@
                                 <span>Apply Action Item</span>
                             </button>
                         </form>
+
+                        <!-- Tables In-Use / Unavailable Module -->
+                        <div class="bg-gray-950 border border-gray-800 p-4 rounded-2xl space-y-3">
+                            <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+                                <span class="text-[11px] font-bold text-rose-400 uppercase flex items-center gap-1.5">
+                                    <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i> Tables In-Use / Unavailable Today
+                                </span>
+                                <span id="unavailable-count-badge" class="text-[10px] font-bold bg-gray-900 text-gray-300 px-2 py-0.5 rounded-lg border border-gray-800">0 tables</span>
+                            </div>
+                            <div id="unavailable-tables-list" class="space-y-2 max-h-[220px] overflow-y-auto text-xs">
+                                <p class="text-gray-500 text-center py-3">No active bookings or maintenance for this date.</p>
+                            </div>
+                        </div>
                     </div>
 
                 </div>
-            </div>
-
-            <!-- TAB 4: Monthly Overview -->
-            <div id="admin-tab-month" class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hidden">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-lg font-bold text-white">Monthly Booking & Payment Summary</h3>
-                    <div class="flex items-center gap-2">
-                        <input type="month" id="selected-month" onchange="loadMonthData()" class="bg-gray-950 border border-gray-700 rounded-xl px-4 py-2 text-sm text-white">
-                        <button onclick="downloadMonthlyCSV()" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs rounded-xl flex items-center gap-2 transition-all">
-                            <i data-lucide="download" class="w-4 h-4"></i> Download CSV
-                        </button>
-                    </div>
-                </div>
-                   
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div class="bg-gray-950 border border-gray-800 rounded-xl p-4">
-                        <span class="text-xs font-semibold text-gray-400 uppercase">Total Revenue</span>
-                        <p id="month-total-rev" class="text-2xl font-extrabold text-felt-400 mt-1">R0.00</p>
-                    </div>
-                    <div class="bg-gray-950 border border-gray-800 rounded-xl p-4">
-                        <span class="text-xs font-semibold text-gray-400 uppercase">Cash Collected</span>
-                        <p id="month-total-cash" class="text-2xl font-extrabold text-amber-400 mt-1">R0.00</p>
-                    </div>
-                    <div class="bg-gray-950 border border-gray-800 rounded-xl p-4">
-                        <span class="text-xs font-semibold text-gray-400 uppercase">Card Payments</span>
-                        <p id="month-total-card" class="text-2xl font-extrabold text-blue-400 mt-1">R0.00</p>
-                    </div>
-                </div>
-
-                <div id="month-calendar-grid" class="grid grid-cols-7 gap-2 text-center text-xs min-h-[300px] relative"></div>
             </div>
 
         </section>
@@ -384,82 +363,6 @@
         </div>
     </div>
 
-    <!-- EDIT BOOKING MODAL -->
-    <div id="edit-booking-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center hidden z-50">
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-lg w-full space-y-4">
-            <div class="flex justify-between items-center">
-                <h3 class="text-lg font-bold text-white">Edit Booking</h3>
-                <button onclick="closeEditModal()" class="text-gray-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
-            </div>
-            <form id="edit-booking-form" onsubmit="handleEditBookingSubmit(event)" class="space-y-4">
-                <input type="hidden" id="edit-booking-id">
-                
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">User Name</label>
-                        <input type="text" id="edit-user-name" required class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Phone</label>
-                        <input type="text" id="edit-phone" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Table</label>
-                        <select id="edit-table-id" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white"></select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Date</label>
-                        <input type="date" id="edit-booking-date" required class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Time Slot</label>
-                        <input type="text" id="edit-time-slot" required placeholder="e.g. 11:00 AM - 01:00 PM" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Total Price (R)</label>
-                        <input type="number" step="0.01" id="edit-total-price" required class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Payment Method</label>
-                        <select id="edit-payment-method" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
-                            <option value="">Unpaid / None</option>
-                            <option value="CASH">CASH</option>
-                            <option value="CARD">CARD</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Status</label>
-                        <select id="edit-status" class="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white">
-                            <option value="CONFIRMED">CONFIRMED</option>
-                            <option value="WALK_IN">WALK_IN</option>
-                            <option value="RESERVED">RESERVED</option>
-                            <option value="MAINTENANCE">MAINTENANCE</option>
-                            <option value="CANCELLED">CANCELLED</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-2 pt-2">
-                    <button type="submit" id="btn-save-edit" class="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition-all text-sm">
-                        Save Changes
-                    </button>
-                    <button type="button" onclick="closeEditModal()" class="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded-xl transition-all text-sm">
-                        Cancel
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <!-- ALERT / MESSAGE MODAL -->
     <div id="alert-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center hidden z-50">
         <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-sm w-full text-center space-y-4">
@@ -471,21 +374,16 @@
     </div>
 
     <script>
-        // ----------------------------------------------------
-        // ADMIN AUTHENTICATION & LONG SESSION LOGIC
-        // ----------------------------------------------------
-        const ADMIN_PASSWORD_HASH = "cueflix2026"; // Change this password string as needed
+        const ADMIN_PASSWORD_HASH = "cueflix2026";
 
         function checkAdminAuth() {
             const authExpiry = localStorage.getItem('cueflix_admin_expiry');
             const now = new Date().getTime();
 
             if (authExpiry && now < parseInt(authExpiry)) {
-                // Session is valid, hide overlay
                 document.getElementById('auth-overlay').classList.add('hidden');
                 return true;
             } else {
-                // Expired or not logged in
                 localStorage.removeItem('cueflix_admin_auth');
                 localStorage.removeItem('cueflix_admin_expiry');
                 document.getElementById('auth-overlay').classList.remove('hidden');
@@ -499,7 +397,6 @@
             const errEl = document.getElementById('login-error');
 
             if (inputVal === ADMIN_PASSWORD_HASH) {
-                // Set session duration to 30 days (Long session)
                 const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
                 const expiryTime = new Date().getTime() + thirtyDaysMs;
 
@@ -519,14 +416,12 @@
         function handleAdminLogout() {
             localStorage.removeItem('cueflix_admin_auth');
             localStorage.removeItem('cueflix_admin_expiry');
-            document.getElementById('auth-overlay').classList.remove('hidden');
+            document.getElementById('auth-overlay').classList.add('hidden');
             showToast('Session locked securely.', 'info');
         }
 
-        // Run auth check immediately on script load
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
-            
             if (checkAdminAuth()) {
                 initDashboard();
             }
@@ -581,11 +476,8 @@
 
         function initDashboard() {
             const now = new Date();
-            const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-            
             appState.selectedDate = now.toLocaleDateString('en-CA');
             document.getElementById('selected-date').value = appState.selectedDate;
-            document.getElementById('selected-month').value = monthStr;            
             document.getElementById('selected-date').addEventListener('change', onDateChange);
             document.getElementById('action-items-form').addEventListener('submit', handleActionFormSubmit);
 
@@ -594,7 +486,6 @@
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        // Toggle Sidebar Collapse Function
         function toggleSidebar() {
             appState.isSidebarCollapsed = !appState.isSidebarCollapsed;
             const sidebar = document.getElementById('sidebar');
@@ -674,7 +565,7 @@
         }
 
         function switchAdminTab(tab) {
-            ['matrix', 'day-bookings', 'actions', 'month'].forEach(t => {
+            ['matrix', 'day-bookings', 'actions'].forEach(t => {
                 const el = document.getElementById(`admin-tab-${t}`);
                 const btn = document.getElementById(`tab-btn-${t}`);
                 if (t === tab) {
@@ -686,7 +577,6 @@
                 }
             });
 
-            if (tab === 'month') loadMonthData();
             if (tab === 'actions') renderAdminFloorPlan();
         }
 
@@ -704,7 +594,7 @@
             const bookingsContainer = document.getElementById('admin-bookings-list');
 
             rowsContainer.innerHTML = getLoaderHTML("Loading schedule timeline...");
-            bookingsContainer.innerHTML = `<tr><td colspan="8" class="p-8 text-center relative">${getLoaderHTML("Loading bookings...")}</td></tr>`;
+            bookingsContainer.innerHTML = `<tr><td colspan="7" class="p-8 text-center relative">${getLoaderHTML("Loading bookings...")}</td></tr>`;
             if (typeof lucide !== 'undefined') lucide.createIcons();
 
             try {
@@ -726,6 +616,7 @@
                 renderTimeline();
                 renderAdminBookings(appState.allDateBookings);
                 renderAdminFloorPlan();
+                renderUnavailableTablesList();
             } catch (err) {
                 console.error('Error loading admin data:', err);
                 showToast('Failed to load dashboard data.', 'error');
@@ -892,7 +783,6 @@
             }
         }
 
-        /* Interactive Admin Floorplan Functions */
         function renderAdminFloorPlan() {
             renderAdminMainFloor();
             renderAdminHeyballZone();
@@ -1001,73 +891,41 @@
             }
         }
 
-        function downloadMonthlyCSV() {
-            const month = document.getElementById('selected-month').value;
-            if (!month) {
-                showAlertModal('Please select a valid month to download.', 'Selection Required');
+        // Render Tables In-Use / Unavailable Module list under Capture Tables
+        function renderUnavailableTablesList() {
+            const container = document.getElementById('unavailable-tables-list');
+            const countBadge = document.getElementById('unavailable-count-badge');
+            if (!container) return;
+
+            const activeBookings = (appState.allDateBookings || []).filter(b => b.is_active === true);
+            countBadge.innerText = `${activeBookings.length} tables active`;
+
+            if (activeBookings.length === 0) {
+                container.innerHTML = `<p class="text-gray-500 text-center py-3">No active bookings or maintenance for this date.</p>`;
                 return;
             }
-            showToast('Preparing CSV download...', 'info');
-            window.location.href = `/api/admin/export-month-csv?month=${month}`;
-        }
 
-        async function loadMonthData() {
-            const selectedMonth = document.getElementById('selected-month').value;
-            if (!selectedMonth) return;
+            container.innerHTML = '';
+            activeBookings.forEach(b => {
+                const tableObj = appState.tables.find(t => Number(t.id) === Number(b.table_id));
+                const tableName = tableObj ? (tableObj.name || `Table ${tableObj.id}`) : `Table ${b.table_id}`;
+                const slot = b.time_slot || b.start_time || 'All Day';
+                
+                let badgeColor = "bg-blue-500/10 text-blue-400 border-blue-500/20";
+                if (b.status === 'RESERVED') badgeColor = "bg-rose-500/10 text-rose-400 border-rose-500/20";
+                if (b.status === 'MAINTENANCE') badgeColor = "bg-gray-700/30 text-gray-400 border-gray-600/30";
 
-            const grid = document.getElementById('month-calendar-grid');
-            grid.innerHTML = getLoaderHTML("Loading monthly summary...");
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-
-            try {
-                const res = await fetch(`/api/admin/month-summary?month=${selectedMonth}`);
-                const monthData = await res.json();
-
-                document.getElementById('month-total-rev').innerText = `R${Number(monthData.totalRevenue || 0).toFixed(2)}`;
-                document.getElementById('month-total-cash').innerText = `R${Number(monthData.totalCash || 0).toFixed(2)}`;
-                document.getElementById('month-total-card').innerText = `R${Number(monthData.totalCard || 0).toFixed(2)}`;
-
-                renderMonthGrid(selectedMonth, monthData.days || {});
-            } catch (err) {
-                console.error('Error loading month overview:', err);
-                showToast('Failed to load monthly overview data.', 'error');
-            }
-        }
-
-        function renderMonthGrid(yearMonth, dailyData) {
-            const grid = document.getElementById('month-calendar-grid');
-            grid.innerHTML = '';
-
-            const [year, month] = yearMonth.split('-').map(Number);
-            const daysInMonth = new Date(year, month, 0).getDate();
-            const firstDayIndex = new Date(year, month - 1, 1).getDay();
-
-            const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            weekdays.forEach(day => {
-                grid.innerHTML += `<div class="font-bold text-gray-500 py-2">${day}</div>`;
-            });
-
-            for (let i = 0; i < firstDayIndex; i++) {
-                grid.innerHTML += `<div class="bg-gray-950/20 rounded-xl h-24 border border-gray-900/50"></div>`;
-            }
-
-            for (let day = 1; day <= daysInMonth; day++) {
-                const dateKey = `${yearMonth}-${String(day).padStart(2, '0')}`;
-                const data = dailyData[dateKey] || { total: 0, cash: 0, card: 0, count: 0 };
-
-                grid.innerHTML += `
-                    <div class="bg-gray-950 border border-gray-800 rounded-xl p-2 h-24 flex flex-col justify-between text-left hover:border-gray-700 transition-all">
-                        <span class="font-bold text-white text-xs">${day}</span>
-                        <div>
-                            <p class="text-[10px] font-bold text-felt-400">R${Number(data.total).toFixed(2)}</p>
-                            <div class="text-[9px] text-gray-400 mt-0.5 space-y-0.5">
-                                <p class="text-amber-400">Cash: R${Number(data.cash).toFixed(2)}</p>
-                                <p class="text-blue-400">Card: R${Number(data.card).toFixed(2)}</p>
-                            </div>
-                        </div>
+                const item = document.createElement('div');
+                item.className = "flex items-center justify-between bg-gray-900 border border-gray-800 p-2 rounded-xl";
+                item.innerHTML = `
+                    <div>
+                        <span class="font-bold text-white">${tableName}</span>
+                        <span class="text-[10px] text-gray-400 block">${b.user_name || 'Booked'} (${slot})</span>
                     </div>
+                    <span class="px-2 py-0.5 text-[10px] font-bold rounded-lg border ${badgeColor}">${b.status || 'BOOKED'}</span>
                 `;
-            }
+                container.appendChild(item);
+            });
         }
 
         function parseTimeToMinutes(timeStr) {
@@ -1100,6 +958,7 @@
             return { startMin: 660, durationMin: 60 };
         }
 
+        // Render Timeline / Diary Diary View
         function renderTimeline() {
             document.getElementById('matrix-date-label').innerText = `Date: ${appState.selectedDate}`;
             const headerContainer = document.getElementById('timeline-header');
@@ -1114,8 +973,8 @@
             const dayTotalMin = totalHours * 60;
 
             const tableHeaderSpacer = document.createElement('div');
-            tableHeaderSpacer.className = 'w-32 flex-shrink-0 font-bold text-xs text-gray-400 flex items-center justify-center border-r border-gray-800 bg-gray-950 p-2 sticky left-0 z-20';
-            tableHeaderSpacer.innerText = 'Table';
+            tableHeaderSpacer.className = 'w-44 flex-shrink-0 font-bold text-xs text-gray-400 flex items-center justify-center border-r border-gray-800 bg-gray-950 p-2 sticky left-0 z-20';
+            tableHeaderSpacer.innerText = 'Table / Status';
             headerContainer.appendChild(tableHeaderSpacer);
 
             const timelineHeaderTrack = document.createElement('div');
@@ -1142,9 +1001,15 @@
                 const row = document.createElement('div');
                 row.className = 'flex items-stretch h-14 border border-gray-800/60 rounded-xl overflow-hidden bg-gray-950/40 relative';
 
+                const tableBookings = appState.allDateBookings.filter(b => Number(b.table_id) === Number(table.id) && b.is_active === true);
+                const hasActiveBooking = tableBookings.length > 0;
+
                 const tableLabel = document.createElement('div');
-                tableLabel.className = 'w-32 flex-shrink-0 font-bold text-sm text-white border-r border-gray-800 flex items-center justify-center bg-gray-950 sticky left-0 z-10 px-2 truncate';
-                tableLabel.innerText = table.name || `Table ${table.id}`;
+                tableLabel.className = 'w-44 flex-shrink-0 font-bold text-xs text-white border-r border-gray-800 flex items-center justify-between bg-gray-950 sticky left-10 z-10 px-3 truncate';
+                tableLabel.innerHTML = `
+                    <span class="truncate">${table.name || `Table ${table.id}`}</span>
+                    ${hasActiveBooking ? '<span class="px-1.5 py-0.5 text-[9px] bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded font-bold">In Use</span>' : '<span class="px-1.5 py-0.5 text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded font-semibold">Available</span>'}
+                `;
                 row.appendChild(tableLabel);
 
                 const track = document.createElement('div');
@@ -1156,8 +1021,6 @@
                     gridLine.style.left = `${(h / totalHours) * 100}%`;
                     track.appendChild(gridLine);
                 }
-
-                const tableBookings = appState.allDateBookings.filter(b => Number(b.table_id) === Number(table.id) && b.is_active === true);
 
                 tableBookings.forEach(b => {
                     const { startMin, durationMin } = getBookingTimeRange(b);
@@ -1191,12 +1054,13 @@
             });
         }
 
+        // Render Day Bookings Table (Total Amount minus booking fee)
         function renderAdminBookings(bookings) {
             const container = document.getElementById('admin-bookings-list');
             container.innerHTML = '';
 
             if (!bookings || bookings.length === 0) {
-                container.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-gray-500">No bookings found for this date.</td></tr>`;
+                container.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-500">No bookings found for this date.</td></tr>`;
                 return;
             }
 
@@ -1220,6 +1084,11 @@
                     `;
                 }
 
+                // Total Amount minus booking fee
+                const rawTotal = Number(b.total_price || 0);
+                const bookingFee = Number(b.booking_fee || 0);
+                const netAmount = Math.max(0, rawTotal - bookingFee);
+
                 tr.innerHTML = `
                     <td class="p-3 font-mono text-xs text-amber-400">${b.ref_id || 'N/A'}</td>
                     <td class="p-3 font-semibold text-white">${b.user_name || 'N/A'}</td>
@@ -1227,83 +1096,12 @@
                     <td class="p-3 text-xs text-gray-300">${b.time_slot || b.slot || ''}</td>
                     <td class="p-3">Table ${b.table_id}</td>
                     <td class="p-3">${methodBadge}</td>
-                    <td class="p-3 font-semibold text-felt-400">R${Number(b.total_price || 0).toFixed(2)}</td>
-                    <td class="p-3">
-                        <button onclick="openEditModal('${b.id}')" class="px-3 py-1 bg-gray-800 hover:bg-amber-500 hover:text-black text-amber-400 font-bold text-xs rounded-lg transition-all flex items-center gap-1">
-                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Edit
-                        </button>
-                    </td>
+                    <td class="p-3 font-semibold text-felt-400">R${netAmount.toFixed(2)}</td>
                 `;
                 container.appendChild(tr);
             });
 
             if (typeof lucide !== 'undefined') lucide.createIcons();
-        }
-
-        function openEditModal(bookingId) {
-            const booking = appState.allDateBookings.find(b => String(b.id) === String(bookingId));
-            if (!booking) return;
-
-            const tableSelect = document.getElementById('edit-table-id');
-            tableSelect.innerHTML = appState.tables.map(t => 
-                `<option value="${t.id}" ${Number(t.id) === Number(booking.table_id) ? 'selected' : ''}>Table ${t.id}</option>`
-            ).join('');
-
-            document.getElementById('edit-booking-id').value = booking.id;
-            document.getElementById('edit-user-name').value = booking.user_name || '';
-            document.getElementById('edit-phone').value = booking.phone || '';
-            document.getElementById('edit-booking-date').value = booking.booking_date || new Date().toLocaleDateString('en-CA');
-            document.getElementById('edit-time-slot').value = booking.time_slot || '';
-            document.getElementById('edit-total-price').value = booking.total_price || 0;
-            document.getElementById('edit-payment-method').value = booking.payment_method || '';
-            document.getElementById('edit-status').value = booking.status || 'CONFIRMED';
-
-            document.getElementById('edit-booking-modal').classList.remove('hidden');
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        }
-
-        function closeEditModal() {
-            document.getElementById('edit-booking-modal').classList.add('hidden');
-        }
-
-        async function handleEditBookingSubmit(e) {
-            e.preventDefault();
-            const id = document.getElementById('edit-booking-id').value;
-            const saveBtn = document.getElementById('btn-save-edit');
-            saveBtn.disabled = true;
-
-            const payload = {
-                user_name: document.getElementById('edit-user-name').value,
-                phone: document.getElementById('edit-phone').value,
-                table_id: document.getElementById('edit-table-id').value,
-                booking_date: document.getElementById('edit-booking-date').value,
-                time_slot: document.getElementById('edit-time-slot').value,
-                total_price: document.getElementById('edit-total-price').value,
-                payment_method: document.getElementById('edit-payment-method').value || null,
-                status: document.getElementById('edit-status').value
-            };
-
-            try {
-                const res = await fetch(`/api/admin/bookings/${id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (res.ok) {
-                    showToast('Booking updated successfully!', 'success');
-                    closeEditModal();
-                    await loadAdminData();
-                } else {
-                    const data = await res.json();
-                    showAlertModal(data.error || 'Failed to update booking.', 'Update Failed', 'error');
-                }
-            } catch (err) {
-                console.error('Error updating booking:', err);
-                showToast('Network error while updating booking.', 'error');
-            } finally {
-                saveBtn.disabled = false;
-            }
         }
 
         async function updatePaymentMethod(bookingId, paymentMethod) {
