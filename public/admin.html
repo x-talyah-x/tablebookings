@@ -959,100 +959,116 @@
         }
 
         // Render Timeline / Diary Diary View
-        function renderTimeline() {
-            document.getElementById('matrix-date-label').innerText = `Date: ${appState.selectedDate}`;
-            const headerContainer = document.getElementById('timeline-header');
-            const rowsContainer = document.getElementById('timeline-rows');
+function renderTimeline() {
+    document.getElementById('matrix-date-label').innerText = `Date: ${appState.selectedDate}`;
+    const headerContainer = document.getElementById('timeline-header');
+    const rowsContainer = document.getElementById('timeline-rows');
 
-            headerContainer.innerHTML = '';
-            rowsContainer.innerHTML = '';
+    headerContainer.innerHTML = '';
+    rowsContainer.innerHTML = '';
 
-            const startHour = 11;
-            const totalHours = 12;
-            const dayStartMin = startHour * 60;
-            const dayTotalMin = totalHours * 60;
+    const startHour = 11;
+    const totalHours = 12;
+    const dayStartMin = startHour * 60;
+    const dayTotalMin = totalHours * 60;
 
-            const tableHeaderSpacer = document.createElement('div');
-            tableHeaderSpacer.className = 'w-44 flex-shrink-0 font-bold text-xs text-gray-400 flex items-center justify-center border-r border-gray-800 bg-gray-950 p-2 sticky left-0 z-20';
-            tableHeaderSpacer.innerText = 'Table / Status';
-            headerContainer.appendChild(tableHeaderSpacer);
+    // 1. Column header spacer / Time axis title
+    const tableHeaderSpacer = document.createElement('div');
+    tableHeaderSpacer.className = 'w-44 flex-shrink-0 font-bold text-xs text-gray-400 flex items-center justify-center border-r border-gray-800 bg-gray-950 p-2 sticky left-0 z-20';
+    tableHeaderSpacer.innerText = 'Time / Table In Use';
+    headerContainer.appendChild(tableHeaderSpacer);
 
-            const timelineHeaderTrack = document.createElement('div');
-            timelineHeaderTrack.className = 'flex-1 flex relative h-8';
+    const timelineHeaderTrack = document.createElement('div');
+    timelineHeaderTrack.className = 'flex-1 flex relative h-8';
 
-            for (let h = 0; h < totalHours; h++) {
-                const hour = (startHour + h) % 24;
-                const ampm = hour >= 12 ? 'PM' : 'AM';
-                const displayH = hour % 12 || 12;
+    // 2. Render hourly columns across the top
+    for (let h = 0; h < totalHours; h++) {
+        const hour = (startHour + h) % 24;
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const displayH = hour % 12 || 12;
 
-                const colHeader = document.createElement('div');
-                colHeader.className = 'flex-1 font-bold text-xs text-gray-400 text-center flex items-center justify-center border-r border-gray-800/40 bg-gray-950';
-                colHeader.innerText = `${displayH}:00 ${ampm}`;
-                timelineHeaderTrack.appendChild(colHeader);
-            }
-            headerContainer.appendChild(timelineHeaderTrack);
+        const colHeader = document.createElement('div');
+        colHeader.className = 'flex-1 font-bold text-xs text-gray-400 text-center flex items-center justify-center border-r border-gray-800/40 bg-gray-950';
+        colHeader.innerText = `${displayH}:00 ${ampm}`;
+        timelineHeaderTrack.appendChild(colHeader);
+    }
+    headerContainer.appendChild(timelineHeaderTrack);
 
-            if (appState.tables.length === 0) {
-                rowsContainer.innerHTML = `<div class="p-8 text-center text-gray-500 text-sm">No pool tables available.</div>`;
-                return;
-            }
+    if (appState.tables.length === 0) {
+        rowsContainer.innerHTML = `<div class="p-8 text-center text-gray-500 text-sm">No pool tables available.</div>`;
+        return;
+    }
 
-            appState.tables.forEach(table => {
-                const row = document.createElement('div');
-                row.className = 'flex items-stretch h-14 border border-gray-800/60 rounded-xl overflow-hidden bg-gray-950/40 relative';
+    // 3. FILTER: Only select tables that have active bookings for the selected date
+    const activeTables = appState.tables.filter(table => {
+        const tableBookings = appState.allDateBookings.filter(b => Number(b.table_id) === Number(table.id) && b.is_active === true);
+        return tableBookings.length > 0;
+    });
 
-                const tableBookings = appState.allDateBookings.filter(b => Number(b.table_id) === Number(table.id) && b.is_active === true);
-                const hasActiveBooking = tableBookings.length > 0;
+    if (activeTables.length === 0) {
+        rowsContainer.innerHTML = `<div class="p-8 text-center text-gray-500 text-sm bg-gray-950/40 rounded-xl border border-gray-800/60">No tables currently in use or booked for this date.</div>`;
+        return;
+    }
 
-                const tableLabel = document.createElement('div');
-                tableLabel.className = 'w-44 flex-shrink-0 font-bold text-xs text-white border-r border-gray-800 flex items-center justify-between bg-gray-950 sticky left-10 z-10 px-3 truncate';
-                tableLabel.innerHTML = `
-                    <span class="truncate">${table.name || `Table ${table.id}`}</span>
-                    ${hasActiveBooking ? '<span class="px-1.5 py-0.5 text-[9px] bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded font-bold">In Use</span>' : '<span class="px-1.5 py-0.5 text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded font-semibold">Available</span>'}
-                `;
-                row.appendChild(tableLabel);
+    // 4. Render rows only for active/in-use tables
+    activeTables.forEach(table => {
+        const row = document.createElement('div');
+        row.className = 'flex items-stretch h-14 border border-gray-800/60 rounded-xl overflow-hidden bg-gray-950/40 relative';
 
-                const track = document.createElement('div');
-                track.className = 'flex-1 relative bg-gray-950/20';
+        const tableBookings = appState.allDateBookings.filter(b => Number(b.table_id) === Number(table.id) && b.is_active === true);
 
-                for (let h = 1; h < totalHours; h++) {
-                    const gridLine = document.createElement('div');
-                    gridLine.className = 'absolute top-0 bottom-0 border-r border-gray-800/30 pointer-events-none';
-                    gridLine.style.left = `${(h / totalHours) * 100}%`;
-                    track.appendChild(gridLine);
-                }
+        // Table Label on the left column with times/status
+        const tableLabel = document.createElement('div');
+        tableLabel.className = 'w-44 flex-shrink-0 font-bold text-xs text-white border-r border-gray-800 flex items-center justify-between bg-gray-950 sticky left-0 z-10 px-3 truncate';
+        tableLabel.innerHTML = `
+            <span class="truncate">${table.name || `Table ${table.id}`}</span>
+            <span class="px-1.5 py-0.5 text-[9px] bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded font-bold">Active</span>
+        `;
+        row.appendChild(tableLabel);
 
-                tableBookings.forEach(b => {
-                    const { startMin, durationMin } = getBookingTimeRange(b);
-                    const offsetMin = Math.max(0, startMin - dayStartMin);
-                    const leftPercent = (offsetMin / dayTotalMin) * 100;
-                    const widthPercent = (durationMin / dayTotalMin) * 100;
+        const track = document.createElement('div');
+        track.className = 'flex-1 relative bg-gray-950/20';
 
-                    if (leftPercent < 100 && (leftPercent + widthPercent) > 0) {
-                        let bgClass = "bg-rose-500/20 border-rose-500 text-rose-300";
-                        if (b.status === 'WALK_IN') bgClass = "bg-blue-500/20 border-blue-500 text-blue-300";
-                        if (b.status === 'MAINTENANCE') bgClass = "bg-gray-700/40 border-gray-500 text-gray-300";
-
-                        const block = document.createElement('div');
-                        block.className = `absolute top-1 bottom-1 rounded-lg border px-2 py-1 flex flex-col justify-center text-[10px] leading-tight shadow-md overflow-hidden transition-all hover:scale-[1.01] hover:z-20 cursor-pointer ${bgClass}`;
-                        block.style.left = `${Math.max(0, leftPercent)}%`;
-                        block.style.width = `${Math.min(100 - leftPercent, widthPercent)}%`;
-
-                        const slotLabel = b.time_slot || b.slot || '';
-                        block.title = `${b.user_name || 'Booking'} (${slotLabel})`;
-
-                        block.innerHTML = `
-                            <span class="font-bold truncate">${b.user_name || 'Booking'}</span>
-                            <span class="text-[9px] opacity-80 truncate">${slotLabel}</span>
-                        `;
-                        track.appendChild(block);
-                    }
-                });
-
-                row.appendChild(track);
-                rowsContainer.appendChild(row);
-            });
+        // Background grid hour separators
+        for (let h = 1; h < totalHours; h++) {
+            const gridLine = document.createElement('div');
+            gridLine.className = 'absolute top-0 bottom-0 border-r border-gray-800/30 pointer-events-none';
+            gridLine.style.left = `${(h / totalHours) * 100}%`;
+            track.appendChild(gridLine);
         }
+
+        // Render booking time slots inside the row track
+        tableBookings.forEach(b => {
+            const { startMin, durationMin } = getBookingTimeRange(b);
+            const offsetMin = Math.max(0, startMin - dayStartMin);
+            const leftPercent = (offsetMin / dayTotalMin) * 100;
+            const widthPercent = (durationMin / dayTotalMin) * 100;
+
+            if (leftPercent < 100 && (leftPercent + widthPercent) > 0) {
+                let bgClass = "bg-rose-500/20 border-rose-500 text-rose-300";
+                if (b.status === 'WALK_IN') bgClass = "bg-blue-500/20 border-blue-500 text-blue-300";
+                if (b.status === 'MAINTENANCE') bgClass = "bg-gray-700/40 border-gray-500 text-gray-300";
+
+                const block = document.createElement('div');
+                block.className = `absolute top-1 bottom-1 rounded-lg border px-2 py-1 flex flex-col justify-center text-[10px] leading-tight shadow-md overflow-hidden transition-all hover:scale-[1.01] hover:z-20 cursor-pointer ${bgClass}`;
+                block.style.left = `${Math.max(0, leftPercent)}%`;
+                block.style.width = `${Math.min(100 - leftPercent, widthPercent)}%`;
+
+                const slotLabel = b.time_slot || b.slot || '';
+                block.title = `${b.user_name || 'Booking'} (${slotLabel})`;
+
+                block.innerHTML = `
+                    <span class="font-bold truncate">${b.user_name || 'Booking'}</span>
+                    <span class="text-[9px] opacity-80 truncate">${slotLabel}</span>
+                `;
+                track.appendChild(block);
+            }
+        });
+
+        row.appendChild(track);
+        rowsContainer.appendChild(row);
+    });
+}
 
         // Render Day Bookings Table (Total Amount minus booking fee)
         function renderAdminBookings(bookings) {
