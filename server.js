@@ -142,7 +142,7 @@ app.get('/api/weekly-availability', async (req, res) => {
     if (bookingsErr) return res.status(500).json({ error: bookingsErr.message });
 
     const result = {};
-    const hours = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+    const hours = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 00, 01, 02];
 
     dates.forEach(d => {
         result[d] = {};
@@ -238,7 +238,7 @@ app.post('/api/payments/yoco/create-checkout', async (req, res) => {
     const priceMap = {};
     (dbTables || []).forEach(t => priceMap[t.id] = Number(t.price) || 50);
 
-    const feePerHour = Number(bookingFeePerHour) || Number(bookingFeePerTable) || 15;
+    const feePerHour = Number(bookingFeePerHour) || Number(bookingFeePerTable) || 20;
     const duration = Number(durationHours) || 1;
     const totalFeePerTable = feePerHour * duration;
 
