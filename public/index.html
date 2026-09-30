@@ -664,23 +664,23 @@
         }
 
         function showBookingSuccessAnimation(bookingDetails, onComplete) {
-            const overlay = document.getElementById('cue-animation-overlay');
-            const animContainer = document.getElementById('animation-container');
-            const receiptCard = document.getElementById('receipt-preview-card');
-            const ball = document.getElementById('animated-ball');
-            const cue = document.getElementById('animated-cue');
+            // const overlay = document.getElementById('cue-animation-overlay');
+            // const animContainer = document.getElementById('animation-container');
+            // const receiptCard = document.getElementById('receipt-preview-card');
+            // const ball = document.getElementById('animated-ball');
+            // const cue = document.getElementById('animated-cue');
 
-            animContainer.classList.remove('hidden');
-            receiptCard.classList.add('hidden');
+            // animContainer.classList.remove('hidden');
+            // receiptCard.classList.add('hidden');
 
-            ball.classList.remove('animate-ball');
-            cue.classList.remove('animate-cue');
-            void ball.offsetWidth;
-            void cue.offsetWidth;
+            // ball.classList.remove('animate-ball');
+            // cue.classList.remove('animate-cue');
+            // void ball.offsetWidth;
+            // void cue.offsetWidth;
 
-            overlay.classList.add('active');
-            ball.classList.add('animate-ball');
-            cue.classList.add('animate-cue');
+            // overlay.classList.add('active');
+            // ball.classList.add('animate-ball');
+            // cue.classList.add('animate-cue');
 
             setTimeout(() => {
                 animContainer.classList.add('hidden');
