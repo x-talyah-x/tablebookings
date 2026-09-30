@@ -79,7 +79,7 @@
     #cue-animation-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(0, 0, 0, 0.85);
+        background: rgba(0, 0, 0, 0.88);
         z-index: 9999;
         display: flex;
         flex-direction: column;
@@ -87,7 +87,7 @@
         justify-content: center;
         opacity: 0;
         pointer-events: none;
-        transition: opacity 0.3s ease;
+        transition: opacity 0.4s ease;
     }
     #cue-animation-overlay.active {
         opacity: 1;
@@ -95,56 +95,69 @@
     }
     .pool-table-canvas {
         position: relative;
-        width: 320px;
-        height: 180px;
-        background: radial-gradient(circle, #059669 0%, #064e3b 100%);
-        border: 8px solid #5c2d12;
-        border-radius: 12px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        width: 340px;
+        height: 200px;
+        background: radial-gradient(circle, #059669 0%, #047857 70%, #022c22 100%);
+        border: 10px solid #3b1b06;
+        border-radius: 14px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.6), inset 0 0 20px rgba(0,0,0,0.5);
         overflow: hidden;
     }
     .cue-ball {
         position: absolute;
         top: 50%;
-        left: 50%;
+        left: 55%;
         transform: translate(-50%, -50%);
-        width: 20px;
-        height: 20px;
-        background: radial-gradient(circle at 35% 35%, #ffffff 0%, #e2e8f0 60%, #94a3b8 100%);
+        width: 22px;
+        height: 22px;
+        background: radial-gradient(circle at 32% 32%, #ffffff 0%, #cbd5e1 65%, #64748b 100%);
         border-radius: 50%;
-        box-shadow: inset -2px -2px 4px rgba(0,0,0,0.4), 0 3px 6px rgba(0,0,0,0.4);
+        box-shadow: inset -3px -3px 5px rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.5);
     }
+    
+    /* Highly Realistic Pool Cue Styling */
     .cue-stick {
         position: absolute;
         top: 50%;
-        left: calc(50% + 15px);
-        width: 160px;
+        left: calc(55% + 14px);
+        width: 200px;
         height: 6px;
-        background: linear-gradient(90deg, #d97706, #92400e, #451a03);
+        background: linear-gradient(90deg, 
+            #f8fafc 0%, /* White tip */
+            #e2e8f0 2%, 
+            #ca8a04 3%, /* Brass ferrule */
+            #a16207 4%, 
+            #78350f 7%, /* Maple shaft */
+            #b45309 35%, 
+            #1e293b 35%, #1e293b 50%, /* Textured grip wrap */
+            #78350f 50%, 
+            #451a03 85%, /* Butt sleeve */
+            #270e01 100% /* Rubber bumper */
+        );
         border-radius: 3px;
         transform: translateY(-50%) rotate(15deg);
         transform-origin: left center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        box-shadow: 0 3px 6px rgba(0,0,0,0.4);
     }
 
-    @keyframes ballStrike {
+    @keyframes ballStrikeReal {
         0% { transform: translate(-50%, -50%) scale(1); }
-        25% { transform: translate(-50%, -50%) scale(1); }
-        35% { transform: translate(-25px, -50%) scale(1); } /* Recoils slightly from strike */
-        60% { transform: translate(-45px, -50%) scale(1); }
-        100% { transform: translate(-45px, -50%) scale(1); }
+        22% { transform: translate(-50%, -50%) scale(1); }
+        30% { transform: translate(-38px, -50%) scale(1); } /* Impact compression */
+        38% { transform: translate(-85px, -50%) scale(1); } /* Glides smoothly forward */
+        100% { transform: translate(-85px, -50%) scale(1); }
     }
 
-    @keyframes cueStrikeOnly {
+    @keyframes cueStrikeReal {
         0% { transform: translateY(-50%) rotate(15deg) translateX(0); }
-        20% { transform: translateY(-50%) rotate(15deg) translateX(35px); } /* Wind back */
-        30% { transform: translateY(-50%) rotate(15deg) translateX(-18px); } /* Strike ball */
-        45% { transform: translateY(-50%) rotate(15deg) translateX(-5px); }
+        15% { transform: translateY(-50%) rotate(15deg) translateX(55px); } /* Backswing */
+        30% { transform: translateY(-50%) rotate(15deg) translateX(-14px); } /* Sharp follow-through strike */
+        42% { transform: translateY(-50%) rotate(15deg) translateX(-4px); }
         100% { transform: translateY(-50%) rotate(15deg) translateX(0); }
     }
 
-    .animate-ball-cue { animation: ballStrike 1.6s ease-out forwards; }
-    .animate-cue-stick { animation: cueStrikeOnly 1.6s ease-out forwards; }
+    .animate-ball-cue { animation: ballStrikeReal 1.6s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+    .animate-cue-stick { animation: cueStrikeReal 1.6s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
 </style>
 </head>
 <body class="min-h-screen flex flex-col bg-[#0b0f17] pb-24 md:pb-0">
