@@ -755,14 +755,14 @@
         function updateSelectionUI() {
             const count = appState.selectedTables.length;
             const duration = Number(appState.durationHours);
-            const bookingFee = 15 * duration * count;
+            const bookingFee = 20 * duration * count;
             
             let subtotal = 0;
             appState.selectedTables.forEach(t => subtotal += (t.price || 50) * duration);
             const total = subtotal + bookingFee;
 
             document.getElementById('mobile-selected-count').innerText = `${count} table${count === 1 ? '' : 's'} selected`;
-            document.getElementById('bottom-price').innerText = count > 0 ? `Total: R${total} (incl. R15 * hour fee: R${bookingFee})` : 'Choose one or more available tables';
+            document.getElementById('bottom-price').innerText = count > 0 ? `Total: R${total} (incl. R20 * hour fee: R${bookingFee})` : 'Choose one or more available tables';
             document.getElementById('mobile-multi-book-btn').disabled = count === 0;
 
             const previewSec = document.getElementById('selection-preview');
@@ -805,7 +805,7 @@
             const tableNums = appState.selectedTables.map(t => t.id).sort((a,b) => a - b).join(', ');
             const duration = Number(appState.durationHours);
             const count = appState.selectedTables.length;
-            const bookingFee = 15 * duration * count;
+            const bookingFee = 20 * duration * count;
 
             let subtotal = 0;
             appState.selectedTables.forEach(t => subtotal += (t.price || 50) * duration);
@@ -852,7 +852,7 @@
                 userIdentifier: 'GUEST_USER',
                 phone: phoneInput.value,
                 userId: userId,
-                bookingFeePerHour: 15
+                bookingFeePerHour: 20
             };
 
             try {
