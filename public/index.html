@@ -82,6 +82,7 @@
         background: rgba(0, 0, 0, 0.85);
         z-index: 9999;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         opacity: 0;
@@ -102,20 +103,11 @@
         box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         overflow: hidden;
     }
-    .pocket {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        width: 24px;
-        height: 24px;
-        background: #022c22;
-        border-radius: 50%;
-        box-shadow: inset 0 2px 4px rgba(0,0,0,0.9);
-    }
     .cue-ball {
         position: absolute;
-        bottom: 30px;
-        left: 40px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
         width: 20px;
         height: 20px;
         background: radial-gradient(circle at 35% 35%, #ffffff 0%, #e2e8f0 60%, #94a3b8 100%);
@@ -124,36 +116,35 @@
     }
     .cue-stick {
         position: absolute;
-        bottom: -40px;
-        left: -120px;
+        top: 50%;
+        left: calc(50% + 15px);
         width: 160px;
         height: 6px;
         background: linear-gradient(90deg, #d97706, #92400e, #451a03);
         border-radius: 3px;
-        transform: rotate(-35deg);
-        transform-origin: right center;
+        transform: translateY(-50%) rotate(15deg);
+        transform-origin: left center;
         box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     }
 
-    @keyframes hitAndSink {
-        0% { transform: translate(0, 0) scale(1); animation-timing-function: ease-out; }
-        28% { transform: translate(0, 0) scale(1); animation-timing-function: cubic-bezier(0.1, 0.9, 0.2, 1); }
-        62% { transform: translate(238px, -118px) scale(1); animation-timing-function: ease-in; }
-        82% { transform: translate(246px, -126px) scale(0.2); opacity: 0.9; }
-        100% { transform: translate(248px, -128px) scale(0); opacity: 0; }
+    @keyframes ballStrike {
+        0% { transform: translate(-50%, -50%) scale(1); }
+        25% { transform: translate(-50%, -50%) scale(1); }
+        35% { transform: translate(-25px, -50%) scale(1); } /* Recoils slightly from strike */
+        60% { transform: translate(-45px, -50%) scale(1); }
+        100% { transform: translate(-45px, -50%) scale(1); }
     }
 
-    @keyframes cueStrike {
-        0% { transform: translate(0, 0) rotate(-35deg); animation-timing-function: ease-in; }
-        18% { transform: translate(-22px, 22px) rotate(-35deg); animation-timing-function: cubic-bezier(0, 1, 0.2, 1); }
-        28% { transform: translate(45px, -45px) rotate(-35deg); }
-        38% { transform: translate(25px, -25px) rotate(-35deg); opacity: 1; }
-        70% { transform: translate(25px, -25px) rotate(-35deg); opacity: 1; }
-        100% { transform: translate(25px, -25px) rotate(-35deg); opacity: 0; }
+    @keyframes cueStrikeOnly {
+        0% { transform: translateY(-50%) rotate(15deg) translateX(0); }
+        20% { transform: translateY(-50%) rotate(15deg) translateX(35px); } /* Wind back */
+        30% { transform: translateY(-50%) rotate(15deg) translateX(-18px); } /* Strike ball */
+        45% { transform: translateY(-50%) rotate(15deg) translateX(-5px); }
+        100% { transform: translateY(-50%) rotate(15deg) translateX(0); }
     }
 
-    .animate-ball { animation: hitAndSink 1.6s forwards; }
-    .animate-cue { animation: cueStrike 1.6s forwards; }
+    .animate-ball-cue { animation: ballStrike 1.6s ease-out forwards; }
+    .animate-cue-stick { animation: cueStrikeOnly 1.6s ease-out forwards; }
 </style>
 </head>
 <body class="min-h-screen flex flex-col bg-[#0b0f17] pb-24 md:pb-0">
@@ -388,22 +379,10 @@
         </div>
     </div>
 
-    <!-- Pool Cue Animation & Receipt Preview Overlay -->
+    <!-- Receipt Preview & Pool Cue Animation Overlay -->
     <div id="cue-animation-overlay">
-        <div id="animation-container" class="text-center space-y-4">
-            <div class="pool-table-canvas mx-auto">
-                <div class="pocket"></div>
-                <div id="animated-ball" class="cue-ball"></div>
-                <div id="animated-cue" class="cue-stick"></div>
-            </div>
-            <div class="space-y-1">
-                <h3 class="text-lg font-bold text-white">Booking Confirmed! 🎱</h3>
-                <p class="text-xs text-emerald-400">Your table has been successfully reserved.</p>
-            </div>
-        </div>
-
-        <!-- Receipt Preview Card (Hidden initially, shown after animation) -->
-        <div id="receipt-preview-card" class="hidden bg-gray-900 border border-felt-600 rounded-2xl p-6 max-w-sm w-full mx-4 text-left shadow-2xl relative">
+        <!-- Receipt Preview Card (Shown FIRST) -->
+        <div id="receipt-preview-card" class="bg-gray-900 border border-felt-600 rounded-2xl p-6 max-w-sm w-full mx-4 text-left shadow-2xl relative mb-4">
             <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-felt-600 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-0.5 rounded-full">
                 Official Receipt
             </div>
@@ -423,10 +402,25 @@
             </div>
             <div class="pt-2 text-center">
                 <p class="text-[10px] text-amber-400 mb-3">📸 Screenshot this receipt for entry verification at the counter.</p>
-                <button onclick="window.location.href='/'" class="w-full py-2.5 bg-felt-600 hover:bg-felt-500 rounded-xl text-white font-bold text-xs">
+                <button onclick="triggerCueAnimation()" class="w-full py-2.5 bg-felt-600 hover:bg-felt-500 rounded-xl text-white font-bold text-xs">
                     Done / Book Another
                 </button>
             </div>
+        </div>
+
+        <!-- Cue Animation Container (Shown AFTER user clicks Done) -->
+        <div id="animation-container" class="text-center space-y-4 hidden">
+            <div class="pool-table-canvas mx-auto">
+                <div id="animated-ball" class="cue-ball"></div>
+                <div id="animated-cue" class="cue-stick"></div>
+            </div>
+            <div class="space-y-1">
+                <h3 class="text-lg font-bold text-white">Ready to Play! 🎱</h3>
+                <p class="text-xs text-emerald-400">Enjoy your session at Tee's Cueflix.</p>
+            </div>
+            <button onclick="window.location.href='/'" class="px-6 py-2 bg-felt-600 hover:bg-felt-500 rounded-xl text-white font-bold text-xs">
+                Back to Dashboard
+            </button>
         </div>
     </div>
 
@@ -500,16 +494,16 @@
                     const res = await fetch(`/api/bookings/lookup?refId=${refId}`);
                     const data = await res.json();
                     if (data && data.success) {
-                        showBookingSuccessAnimation(data.receiptData, () => {
+                        showBookingReceipt(data.receiptData, () => {
                             window.history.replaceState({}, document.title, window.location.pathname);
                         });
                     } else {
-                        showBookingSuccessAnimation({ ref_id: refId, user_name: 'Valued Customer', booking_date: appState.selectedDate, time_slot: getFormattedSlot(), table_display: 'See Counter', total_paid: '0' }, () => {
+                        showBookingReceipt({ ref_id: refId, user_name: 'Valued Customer', booking_date: appState.selectedDate, time_slot: getFormattedSlot(), table_display: 'See Counter', total_paid: '0' }, () => {
                             window.history.replaceState({}, document.title, window.location.pathname);
                         });
                     }
                 } catch (e) {
-                    showBookingSuccessAnimation({ ref_id: refId, user_name: 'Valued Customer', booking_date: appState.selectedDate, time_slot: getFormattedSlot(), table_display: 'See Counter', total_paid: '0' }, () => {
+                    showBookingReceipt({ ref_id: refId, user_name: 'Valued Customer', booking_date: appState.selectedDate, time_slot: getFormattedSlot(), table_display: 'See Counter', total_paid: '0' }, () => {
                         window.history.replaceState({}, document.title, window.location.pathname);
                     });
                 }
@@ -663,39 +657,43 @@
             });
         }
 
-        function showBookingSuccessAnimation(bookingDetails, onComplete) {
+        function showBookingReceipt(bookingDetails, onComplete) {
             const overlay = document.getElementById('cue-animation-overlay');
             const animContainer = document.getElementById('animation-container');
             const receiptCard = document.getElementById('receipt-preview-card');
+
+            animContainer.classList.add('hidden');
+            receiptCard.classList.remove('hidden');
+
+            overlay.classList.add('active');
+
+            if (bookingDetails) {
+                document.getElementById('receipt-ref').innerText = bookingDetails.ref_id || 'YOC-XXXXXX';
+                document.getElementById('receipt-name').innerText = bookingDetails.user_name || '--';
+                document.getElementById('receipt-date').innerText = bookingDetails.booking_date || '--';
+                document.getElementById('receipt-slot').innerText = bookingDetails.time_slot || '--';
+                document.getElementById('receipt-tables').innerText = bookingDetails.table_display || '--';
+                document.getElementById('receipt-total').innerText = `R${bookingDetails.total_paid || 0}`;
+            }
+            if (onComplete) onComplete();
+        }
+
+        function triggerCueAnimation() {
+            const receiptCard = document.getElementById('receipt-preview-card');
+            const animContainer = document.getElementById('animation-container');
             const ball = document.getElementById('animated-ball');
             const cue = document.getElementById('animated-cue');
 
-            animContainer.classList.remove('hidden');
             receiptCard.classList.add('hidden');
+            animContainer.classList.remove('hidden');
 
-            ball.classList.remove('animate-ball');
-            cue.classList.remove('animate-cue');
+            ball.classList.remove('animate-ball-cue');
+            cue.classList.remove('animate-cue-stick');
             void ball.offsetWidth;
             void cue.offsetWidth;
 
-            overlay.classList.add('active');
-            ball.classList.add('animate-ball');
-            cue.classList.add('animate-cue');
-
-            setTimeout(() => {
-                animContainer.classList.add('hidden');
-                receiptCard.classList.remove('hidden');
-
-                if (bookingDetails) {
-                    document.getElementById('receipt-ref').innerText = bookingDetails.ref_id || 'YOC-XXXXXX';
-                    document.getElementById('receipt-name').innerText = bookingDetails.user_name || '--';
-                    document.getElementById('receipt-date').innerText = bookingDetails.booking_date || '--';
-                    document.getElementById('receipt-slot').innerText = bookingDetails.time_slot || '--';
-                    document.getElementById('receipt-tables').innerText = bookingDetails.table_display || '--';
-                    document.getElementById('receipt-total').innerText = `R${bookingDetails.total_paid || 0}`;
-                }
-                if (onComplete) onComplete();
-            }, 4500);
+            ball.classList.add('animate-ball-cue');
+            cue.classList.add('animate-cue-stick');
         }
 
         function renderHeyballZone() {
