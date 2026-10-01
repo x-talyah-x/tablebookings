@@ -30,32 +30,33 @@
             <h1 class="text-xl md:text-2xl font-extrabold tracking-tight text-white flex items-center justify-center gap-2">
                 TEE's 🎱 <span class="text-felt-500 text-sm">Cueflix</span>
             </h1>
-            <p class="text-xs text-gray-400 mt-1">Basil's Billiards Bookings</p>
+            <p class="text-xs text-gray-400 mt-1">Billiards Bookings System</p>
         </div>
 
         <div class="space-y-3">
             <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Choose Your Lounge</h2>
             
             <!-- Lounge Option 1 -->
-            <button onclick="selectLounge('Main Billiards Arena')" class="w-full group text-left bg-gray-950 border border-gray-800 hover:border-felt-500 rounded-2xl p-4 transition-all flex items-center justify-between">
+            <button onclick="selectLounge('basils-billiards.html')" class="w-full group text-left bg-gray-950 border border-gray-800 hover:border-felt-500 rounded-2xl p-4 transition-all flex items-center justify-between">
                 <div>
-                    <h3 class="font-bold text-white group-hover:text-felt-400 transition-colors">Main Billiards Arena</h3>
-                    <p class="text-xs text-gray-400 mt-0.5">Blackball, Rasson & Tournament Tables</p>
+                    <h3 class="font-bold text-white group-hover:text-felt-400 transition-colors">Basils Billiards Pool Lounge</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">Blackball, Rasson, Chinese and 9Ball Tables</p>
                 </div>
                 <i data-lucide="chevron-right" class="w-5 h-5 text-gray-600 group-hover:text-felt-400 transition-colors"></i>
             </button>
 
-            <!-- Lounge Option 2 -->
-            <button onclick="selectLounge('Heyball & 9-Ball Lounge')" class="w-full group text-left bg-gray-950 border border-gray-800 hover:border-felt-500 rounded-2xl p-4 transition-all flex items-center justify-between">
+             <button onclick="selectLounge('billiard-cafe.html')" class="w-full group text-left bg-gray-950 border border-gray-800 hover:border-felt-500 rounded-2xl p-4 transition-all flex items-center justify-between">
                 <div>
-                    <h3 class="font-bold text-white group-hover:text-felt-400 transition-colors">Heyball & 9-Ball Lounge</h3>
-                    <p class="text-xs text-gray-400 mt-0.5">Specialized Chinese Heyball & American 9-Ball</p>
+                    <h3 class="font-bold text-white group-hover:text-felt-400 transition-colors">Billiard Cafe</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">Blackball Tournament Tables</p>
                 </div>
                 <i data-lucide="chevron-right" class="w-5 h-5 text-gray-600 group-hover:text-felt-400 transition-colors"></i>
             </button>
+
+          
         </div>
 
-        <p class="text-[11px] text-gray-500">Clicking a lounge will take you straight to live table reservations.</p>
+        <p class="text-[11px] text-gray-500">Clicking a location will take you straight to live table reservations.</p>
     </div>
 
     <script>
@@ -66,7 +67,7 @@
         function selectLounge(loungeName) {
             // Encode the lounge name to safely pass it in URL parameters and redirect to index.html
             const encodedLounge = encodeURIComponent(loungeName);
-            window.location.href = `index.html?lounge=${encodedLounge}`;
+            window.location.href = `${encodedLounge}`;
         }
     </script>
 </body>
