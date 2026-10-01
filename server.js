@@ -353,7 +353,7 @@ app.get('/api/payments/yoco/success', async (req, res) => {
         console.error('Error in success redirect fallback verification:', err);
     }
 
-    return res.redirect(`/basils-billiards.html/?payment=success&refId=${refId}`);
+    return res.redirect(`/basils-billiards.html?payment=success&refId=${refId}`);
 });
 
 app.post('/api/payments/yoco/webhook', async (req, res) => {
