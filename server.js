@@ -243,7 +243,7 @@ app.post('/api/payments/yoco/create-checkout', async (req, res) => {
 
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const host = req.get('host');
-    const baseUrl = `${protocol}://${host}/basils-billiards.html`;
+    const baseUrl = `${protocol}://${host}`;
 
     try {
         const secretKey = process.env.YOCO_SECRET_KEY;
@@ -353,7 +353,7 @@ app.get('/api/payments/yoco/success', async (req, res) => {
         console.error('Error in success redirect fallback verification:', err);
     }
 
-    return res.redirect(`/?payment=success&refId=${refId}`);
+    return res.redirect(`/basils-billiards.html/?payment=success&refId=${refId}`);
 });
 
 app.post('/api/payments/yoco/webhook', async (req, res) => {
