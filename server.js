@@ -243,7 +243,7 @@ app.post('/api/payments/yoco/create-checkout', async (req, res) => {
 
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const host = req.get('host');
-    const baseUrl = `${protocol}://${host}`;
+    const baseUrl = `${protocol}://${host}/basils-billiards.html`;
 
     try {
         const secretKey = process.env.YOCO_SECRET_KEY;
