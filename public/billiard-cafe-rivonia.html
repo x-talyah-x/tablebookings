@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Select Lounge - Tee's 🎱 Cueflix</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        felt: { 500: '#10b981', 600: '#059669', 800: '#065f46', 950: '#022c22' }
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Outfit', sans-serif; background-color: #0b0f17; color: #f3f4f6; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="max-w-md w-full bg-gray-900 border border-gray-800 rounded-3xl p-6 md:p-8 shadow-2xl text-center space-y-6">
+        <div>
+            <h1 class="text-xl md:text-2xl font-extrabold tracking-tight text-white flex items-center justify-center gap-2">
+                TEE's 🎱 <span class="text-felt-500 text-sm">Cueflix</span>
+            </h1>
+            <p class="text-xs text-gray-400 mt-1">Billiard Cafe Bookings</p>
+        </div>
+
+        <div class="space-y-3">
+            <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Bookings unavailable at the moment</h2>     
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        });
+
+        function selectLounge(loungeName) {
+            // Encodes the selected lounge name and redirects to basils-billiards.html
+            const encodedLounge = encodeURIComponent(loungeName);
+            window.location.href = `basils-billiards.html?lounge=${encodedLounge}`;
+        }
+    </script>
+</body>
+</html>
